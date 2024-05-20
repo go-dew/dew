@@ -30,35 +30,21 @@ Features
    * - ⚓️ Production Ready
      - 100% test coverage.
 
-:doc:`introduction`
-   What Dew is and what it can do for you.
-
-:doc:`quickstart`
-   A quick start guide to get you up and running.
-
-:doc:`middleware`
-   How to develop and use middleware.
-
-:doc:`testing`
-   How to write tests for your application.
-
 .. toctree::
    :caption: Introduction
-   :hidden
 
    introduction
 
 .. toctree::
    :caption: Quickstart
-   :hidden
 
    quickstart
 
 .. toctree::
-   :caption: Middleware
-   :hidden
+   :caption: Usage
 
    middleware
+   testing
 
 Links
 ------

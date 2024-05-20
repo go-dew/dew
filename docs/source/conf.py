@@ -10,16 +10,12 @@ project = 'Dew'
 copyright = '2024, Dew Developers'
 author = 'Dew Developers'
 
-# -- General configuration ---------------------------------------------------
-# https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
-
 extensions = [
     'sphinx_rtd_theme',
 ]
 
 templates_path = ['_templates']
 exclude_patterns = []
-
 
 
 # -- Options for HTML output -------------------------------------------------
@@ -36,3 +32,12 @@ html_theme_options = {
     'includehidden': True,
     'titles_only': False
 }
+
+# -- Options for Localization ------------------------------------------------
+locale_dirs = ['locale/']
+gettext_compact = False
+gettext_uuid = True
+
+
+# layout
+templates_path = ['_templates']

@@ -12,8 +12,8 @@ To install Dew to your Go project, run the following command in your terminal:
 
     go get github.com/go-dew/dew
 
-Basic Usage
-===========
+Getting Started
+================
 
 Here's a simple example to get you started with Dew:
 
