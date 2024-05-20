@@ -10,12 +10,6 @@ Welcome to Dew's documentation!
    :alt: Dew logo
    :width: 400px
 
-.. toctree::
-   :maxdepth: 2
-   :caption: Contents:
-
-Introduction
-------------
 A Lightweight, Flexible, and Robust Command Bus library for Go.
 
 Features
@@ -28,7 +22,7 @@ Features
    * - Feature
      - Description
    * - 🚀 Lightweight
-     - Clocks around 500 LOC.
+     - Clocks around 600 LOC.
    * - 📦 Minimal
      - Zero dependencies.
    * - 🌹 Practical
@@ -36,15 +30,38 @@ Features
    * - ⚓️ Production Ready
      - 100% test coverage.
 
+:doc:`introduction`
+   What Dew is and what it can do for you.
+
+:doc:`quickstart`
+   A quick start guide to get you up and running.
+
+:doc:`middleware`
+   How to develop and use middleware.
+
+:doc:`testing`
+   How to write tests for your application.
+
+.. toctree::
+   :caption: Introduction
+   :hidden
+
+   introduction
+
+.. toctree::
+   :caption: Quickstart
+   :hidden
+
+   quickstart
+
+.. toctree::
+   :caption: Middleware
+   :hidden
+
+   middleware
+
 Links
 ------
 
 - `GitHub <https://github.com/go-dew/dew>`_
 - `GoDoc <https://pkg.go.dev/github.com/go-dew/dew>`_
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
