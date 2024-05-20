@@ -10,7 +10,7 @@ Welcome to Dew's documentation!
    :alt: Dew logo
    :width: 400px
 
-A Lightweight, Flexible, and Robust Command Bus library for Go.
+A Lightweight, Pragmatic Command Bus library for Go.
 
 Features
 --------
@@ -22,13 +22,13 @@ Features
    * - Feature
      - Description
    * - 🚀 Lightweight
-     - Clocks around 600 LOC.
-   * - 📦 Minimal
-     - Zero dependencies.
-   * - 🌹 Practical
-     - Built-in support for middleware, grouping handlers, and asynchronous queries.
+     - Clocks around 600 LOC with minimalistic design.
+   * - 🌹 Pragmatic and Ergonomic
+     - Focused on developer experience and productivity.
    * - ⚓️ Production Ready
      - 100% test coverage.
+   * - 📦 Zero dependencies
+     - No external dependencies.
 
 .. toctree::
    :caption: Introduction
