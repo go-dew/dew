@@ -1,4 +1,4 @@
-# Dew: A Lightweight Command Bus Library for Go
+# Dew: A Lightweight, Practical Command Bus Library for Go
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/go-dew/dew.svg)](https://pkg.go.dev/github.com/go-dew/dew)
 [![Go Report Card](https://goreportcard.com/badge/github.com/go-dew/dew)](https://goreportcard.com/report/github.com/go-dew/dew)
@@ -10,10 +10,11 @@ Dew is a lightweight, flexible command bus library for Go that simplifies buildi
 
 ## Features
 
-- **Lightweight**: Clocks around 500 LOC.
+- **Lightweight**: Clocks around 600 LOC.
+- **Practical**: Built-in support for middleware, grouping handlers, and asynchronous queries.
 - **Fast**: It utilizes a trie data structure for routing, see [benchmarks](#benchmarks).
+- **Production Ready**: 100% test coverage.
 - **Zero Dependencies**: No external dependencies.
-- **Robust**: 100% test coverage.
 
 ## Installation
 
