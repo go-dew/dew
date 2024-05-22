@@ -29,6 +29,8 @@ Features
      - 100% test coverage.
    * - 📦 Zero dependencies
      - No external dependencies.
+   * - ⚡️ Fast
+     - Benchmarked and optimized for performance.
 
 .. toctree::
    :caption: Introduction
