@@ -445,13 +445,13 @@ func TestExample(t *testing.T) {
 
 ## Benchmarks
 
-Results as of May 17, 2024 with Go 1.22.2 on darwin/arm64
+Results as of May 23, 2024 with Go 1.22.2 on darwin/arm64
 
 ```shell
-BenchmarkQuery/query-12                                  2138353               546.8 ns/op           256 B/op         11 allocs/op
-BenchmarkQuery/dispatch-12                               2097003               566.9 ns/op           296 B/op         12 allocs/op
-BenchmarkQuery/query-with-middleware-12                  2216731               544.1 ns/op           256 B/op         11 allocs/op
-BenchmarkQuery/dispatch-with-middleware-12               2051148               583.0 ns/op           296 B/op         12 allocs/op
+BenchmarkMux/query-12            3012015               393.5 ns/op           168 B/op          7 allocs/op
+BenchmarkMux/dispatch-12         2854291               419.1 ns/op           192 B/op          8 allocs/op
+BenchmarkMux/query-with-middleware-12            2981778               407.8 ns/op           168 B/op          7 allocs/op
+BenchmarkMux/dispatch-with-middleware-12         2699398               446.8 ns/op           192 B/op          8 allocs/op
 ```
 
 ## Contributing

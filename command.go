@@ -98,14 +98,42 @@ func convertInterface[T any](i any) T {
 	return v
 }
 
+type entry struct {
+	t reflect.Type
+	p unsafe.Pointer
+	m *Mux
+}
+
+func storeCache[T Command](cache *syncMap, t reflect.Type, mx *Mux, handlerFunc HandlerFunc[T]) {
+	cache.Store(t, entry{t: t, m: mx, p: unsafe.Pointer(&handlerFunc)})
+}
+
+func loadHandlerCache[T Command](typ reflect.Type, mx *Mux) (HandlerFunc[T], *Mux, bool) {
+	if v, ok := mx.cache.Load(typ); ok {
+		e := v.(entry)
+		return *(*HandlerFunc[T])(e.p), e.m, true
+	}
+	return nil, nil, false
+}
+
 // resolveHandler returns the handler and mux for the given command.
 func resolveHandler[T Command](op OpType, bus Bus) (HandlerFunc[T], *Mux) {
-	k := getKey[T]()
+	typ := typeFor[T]()
 	mx := bus.(*Mux)
-	n := mx.tree.findRoute(op, k)
+
+	handler, mxx, ok := loadHandlerCache[T](typ, mx)
+	if ok {
+		return handler, mxx
+	}
+
+	key := keyForType(typ)
+	n := mx.tree.findRoute(op, key)
 	if n != nil {
 		h := n.handler.handler
-		return convertInterface[HandlerFunc[T]](h.handler), h.mux
+		hh := convertInterface[HandlerFunc[T]](h.handler)
+		storeCache[T](&mx.cache, typ, h.mux, hh)
+		return hh, h.mux
 	}
-	panic(fmt.Sprintf("handler not found for %s", k))
+
+	panic(fmt.Sprintf("handler not found for %s", key))
 }

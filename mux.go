@@ -26,9 +26,31 @@ type Mux struct {
 	tree        *node
 	middlewares [mAll][]middleware
 	mHandlers   [mAll]func(ctx Context, fn mHandlerFunc) error
+	cache       syncMap
 
 	// context pool
 	pool *sync.Pool
+}
+
+// syncMap is a structure that holds a map of handlers.
+type syncMap struct {
+	kv map[reflect.Type]any
+	mu sync.RWMutex
+}
+
+// Load returns the value stored in the map.
+func (m *syncMap) Load(key reflect.Type) (value any, ok bool) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	value, ok = m.kv[key]
+	return
+}
+
+// Store stores the value in the map.
+func (m *syncMap) Store(key reflect.Type, value any) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.kv[key] = value
 }
 
 func (mx *Mux) root() *Mux {
@@ -46,6 +68,7 @@ func newMux() *Mux {
 	mux.pool.New = func() interface{} {
 		return NewContext()
 	}
+	mux.cache.kv = make(map[reflect.Type]any)
 	return mux
 }
 
@@ -365,9 +388,14 @@ func keyForType(typ reflect.Type) string {
 }
 
 // getKey returns the key for the given type.
-func getKey[T any]() string {
-	var v T
-	return keyForType(reflect.TypeOf(v))
+func getKey(typ reflect.Type) string {
+	return keyForType(typ)
+}
+
+// typeFor returns the reflect.Type for the given type.
+func typeFor[T any]() reflect.Type {
+	var t T
+	return reflect.TypeOf(t)
 }
 
 type middleware struct {
