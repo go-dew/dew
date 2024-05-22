@@ -387,11 +387,6 @@ func keyForType(typ reflect.Type) string {
 	return fmt.Sprintf("%s:%s", typ.PkgPath(), typ.String())
 }
 
-// getKey returns the key for the given type.
-func getKey(typ reflect.Type) string {
-	return keyForType(typ)
-}
-
 // typeFor returns the reflect.Type for the given type.
 func typeFor[T any]() reflect.Type {
 	var t T
