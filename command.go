@@ -131,7 +131,7 @@ func resolveHandler[T Command](op OpType, bus Bus) (HandlerFunc[T], *Mux) {
 	if n != nil {
 		h := n.handler.handler
 		hh := convertInterface[HandlerFunc[T]](h.handler)
-		storeCache[T](&mx.cache, typ, h.mux, hh)
+		storeCache[T](mx.cache, typ, h.mux, hh)
 		return hh, h.mux
 	}
 
