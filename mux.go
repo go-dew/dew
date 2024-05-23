@@ -22,8 +22,8 @@ type Mux struct {
 	parent      *Mux
 	inline      bool
 	lock        sync.RWMutex
+	entries     *sync.Map
 	handler     [ALL]Middleware
-	tree        *node
 	middlewares [mAll][]middleware
 	mHandlers   [mAll]func(ctx Context, fn mHandlerFunc) error
 	cache       *syncMap
@@ -64,7 +64,7 @@ type mHandlerFunc func(ctx Context) error
 
 // newMux returns a newly initialized Mux object that implements the dispatcher interface.
 func newMux() *Mux {
-	mux := &Mux{tree: &node{}, pool: &sync.Pool{}}
+	mux := &Mux{entries: &sync.Map{}, pool: &sync.Pool{}}
 	mux.pool.New = func() interface{} {
 		return NewContext()
 	}
@@ -228,7 +228,7 @@ func (mx *Mux) child() Bus {
 		parent:      mx,
 		inline:      true,
 		middlewares: mws,
-		tree:        mx.tree,
+		entries:     mx.entries,
 		cache:       mx.cache,
 	}
 }
@@ -289,9 +289,9 @@ func (mx *Mux) Register(handler any) {
 		if isHandlerMethod(mtdTyp) {
 			cmdTyp := mtdTyp.Type.In(2).Elem()
 			if cmdTyp.Implements(reflect.TypeOf((*Action)(nil)).Elem()) {
-				mx.addHandler(ACTION, cmdTyp, reflect.ValueOf(handler).Method(i).Interface())
+				mx.addHandler(cmdTyp, reflect.ValueOf(handler).Method(i).Interface())
 			} else if cmdTyp.Implements(reflect.TypeOf((*QueryAction)(nil)).Elem()) {
-				mx.addHandler(QUERY, cmdTyp, reflect.ValueOf(handler).Method(i).Interface())
+				mx.addHandler(cmdTyp, reflect.ValueOf(handler).Method(i).Interface())
 			}
 		}
 	}
@@ -310,8 +310,8 @@ func (mx *Mux) setupHandler() {
 	}
 }
 
-func (mx *Mux) addHandler(op OpType, t reflect.Type, h any) {
-	mx.tree.insert(op, keyForType(t), &handler{handler: h, mux: mx})
+func (mx *Mux) addHandler(t reflect.Type, h any) {
+	mx.entries.Store(t, &handler{handler: h, mux: mx})
 }
 
 // isHandlerMethod checks if the method is a Executor method.
@@ -381,11 +381,6 @@ func filterMiddleware(op OpType, middlewares []middleware) []middleware {
 		}
 	}
 	return mws
-}
-
-// keyForType returns the key for the given type.
-func keyForType(typ reflect.Type) string {
-	return fmt.Sprintf("%s:%s", typ.PkgPath(), typ.String())
 }
 
 // typeFor returns the reflect.Type for the given type.

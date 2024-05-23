@@ -10,7 +10,7 @@ Dew is a command bus library for Go, designed to enhance developer experience an
 
 ## Features
 
-- **Lightweight**: Clocks around 600 LOC with minimalistic design.
+- **Lightweight**: Clocks around 450 LOC with minimalistic design.
 - **Pragmatic and Ergonomic**: Focused on developer experience and productivity.
 - **Production Ready**: 100% test coverage.
 - **Zero Dependencies**: No external dependencies.
