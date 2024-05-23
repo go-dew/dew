@@ -35,7 +35,7 @@ type CommandHandler[T Command] interface {
 // NewAction creates an object that can be dispatched.
 // It panics if the handler is not found.
 func NewAction[T Action](bus Bus, cmd *T) CommandHandler[T] {
-	h, mx := resolveHandler[T](ACTION, bus)
+	h, mx := resolveHandler[T](bus)
 	return command[T]{
 		mux:     mx,
 		cmd:     cmd,
@@ -46,7 +46,7 @@ func NewAction[T Action](bus Bus, cmd *T) CommandHandler[T] {
 // NewQuery creates an object that can be dispatched.
 // It panics if the handler is not found.
 func NewQuery[T QueryAction](bus Bus, cmd *T) CommandHandler[T] {
-	h, mx := resolveHandler[T](QUERY, bus)
+	h, mx := resolveHandler[T](bus)
 	return command[T]{
 		mux:     mx,
 		cmd:     cmd,
@@ -75,8 +75,7 @@ func (c command[T]) Mux() *Mux {
 
 func convertInterface[T any](i any) T {
 	var v T
-	vp := unsafe.Pointer(&v)
-	reflect.NewAt(reflect.TypeOf(v), vp).Elem().Set(reflect.ValueOf(i))
+	reflect.NewAt(reflect.TypeOf(v), unsafe.Pointer(&v)).Elem().Set(reflect.ValueOf(i))
 	return v
 }
 
@@ -86,10 +85,12 @@ type entry struct {
 	m *Mux
 }
 
+// storeCache stores the handler in the cache.
 func storeCache[T Command](cache *syncMap, t reflect.Type, mx *Mux, handlerFunc HandlerFunc[T]) {
 	cache.Store(t, entry{t: t, m: mx, p: unsafe.Pointer(&handlerFunc)})
 }
 
+// loadHandlerCache loads the handler from the cache.
 func loadHandlerCache[T Command](typ reflect.Type, mx *Mux) (HandlerFunc[T], *Mux, bool) {
 	if v, ok := mx.cache.Load(typ); ok {
 		e := v.(entry)
@@ -99,23 +100,29 @@ func loadHandlerCache[T Command](typ reflect.Type, mx *Mux) (HandlerFunc[T], *Mu
 }
 
 // resolveHandler returns the handler and mux for the given command.
-func resolveHandler[T Command](op OpType, bus Bus) (HandlerFunc[T], *Mux) {
+func resolveHandler[T Command](bus Bus) (HandlerFunc[T], *Mux) {
 	typ := typeFor[T]()
 	mx := bus.(*Mux)
 
-	handler, mxx, ok := loadHandlerCache[T](typ, mx)
+	h, mxx, ok := loadHandlerCache[T](typ, mx)
 	if ok {
-		return handler, mxx
+		return h, mxx
 	}
 
-	key := keyForType(typ)
-	n := mx.tree.findRoute(op, key)
-	if n != nil {
-		h := n.handler.handler
-		hh := convertInterface[HandlerFunc[T]](h.handler)
-		storeCache[T](mx.cache, typ, h.mux, hh)
-		return hh, h.mux
+	entry, ok := mx.entries.Load(typ)
+	if ok {
+		hh := entry.(*handler)
+		hhh := convertInterface[HandlerFunc[T]](hh.handler)
+		storeCache[T](mx.cache, typ, hh.mux, hhh)
+		return hhh, hh.mux
 	}
 
-	panic(fmt.Sprintf("handler not found for %s", key))
+	panic(fmt.Sprintf("handler not found for %s/%s", typ.PkgPath(), typ.String()))
+}
+
+type handler struct {
+	// handler is the function to call.
+	handler any
+	// mux is the mux that the handler belongs to.
+	mux *Mux
 }
