@@ -177,6 +177,47 @@ func TestMux_QueryAsync_Error(t *testing.T) {
 	}
 }
 
+func TestMux_Reentrant(t *testing.T) {
+	mux := dew.New()
+	mux.Register(new(userHandler))
+	mux.Register(new(postHandler))
+
+	type findUserPost struct {
+		ID     int
+		Result struct {
+			User string
+			Post string
+		}
+	}
+
+	mux.Register(dew.HandlerFunc[findUserPost](
+		func(ctx context.Context, query *findUserPost) error {
+			findUserQuery, err := dew.Query(ctx, dew.NewQuery(dew.FromContext(ctx), &findUser{ID: query.ID}))
+			if err != nil {
+				return err
+			}
+			postQuery, err := dew.Query(ctx, dew.NewQuery(dew.FromContext(ctx), &findPost{ID: query.ID}))
+			if err != nil {
+				return err
+			}
+			query.Result.User = findUserQuery.Result
+			query.Result.Post = postQuery.Result
+			return nil
+		},
+	))
+
+	query, err := dew.Query(context.Background(), dew.NewQuery(mux, &findUserPost{ID: 1}))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if query.Result.User != "john" {
+		t.Fatalf("unexpected result: %s", query.Result.User)
+	}
+	if query.Result.Post != "hello" {
+		t.Fatalf("unexpected result: %s", query.Result.Post)
+	}
+}
+
 type ctxKey struct {
 	name string
 }
@@ -699,6 +740,11 @@ type postHandler struct{}
 
 func (h *postHandler) CreatePost(_ context.Context, command *createPost) error {
 	command.Result = "post created"
+	return nil
+}
+
+func (h *postHandler) FindPost(_ context.Context, query *findPost) error {
+	query.Result = "hello"
 	return nil
 }
 

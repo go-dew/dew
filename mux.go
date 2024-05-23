@@ -26,7 +26,7 @@ type Mux struct {
 	tree        *node
 	middlewares [mAll][]middleware
 	mHandlers   [mAll]func(ctx Context, fn mHandlerFunc) error
-	cache       syncMap
+	cache       *syncMap
 
 	// context pool
 	pool *sync.Pool
@@ -68,7 +68,7 @@ func newMux() *Mux {
 	mux.pool.New = func() interface{} {
 		return NewContext()
 	}
-	mux.cache.kv = make(map[reflect.Type]any)
+	mux.cache = &syncMap{kv: make(map[reflect.Type]any)}
 	return mux
 }
 
@@ -229,6 +229,7 @@ func (mx *Mux) child() Bus {
 		inline:      true,
 		middlewares: mws,
 		tree:        mx.tree,
+		cache:       mx.cache,
 	}
 }
 
