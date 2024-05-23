@@ -22,7 +22,7 @@ Features
    * - Feature
      - Description
    * - 🚀 Lightweight
-     - Clocks around 600 LOC with minimalistic design.
+     - Clocks around 450 LOC with minimalistic design.
    * - 🌹 Pragmatic and Ergonomic
      - Focused on developer experience and productivity.
    * - ⚓️ Production Ready
