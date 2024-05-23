@@ -73,24 +73,6 @@ func (c command[T]) Mux() *Mux {
 	return c.mux
 }
 
-// resolveHandler locates a handler for a given operation type and command type within the provided Bus instance.
-// It constructs a key from the command's reflect.Type, then searches the Mux's tree structure for a corresponding node.
-//
-// Parameters:
-// - typ: The reflect.Type of the command for which a handler is being sought.
-// - op: The operation type (ACTION or QUERY) under which the handler should be classified.
-// - bus: The Bus instance where handlers are registered and organized.
-//
-// Returns:
-// - *node: A pointer to the node struct representing the handler if found.
-// - error: An error if no handler could be found for the provided type and operation.
-//
-// Example:
-//
-//	handlerNode, err := resolveHandler(reflect.TypeOf(myCommand), ACTION, myBus)
-//	if err != nil {
-//	  log.Fatalf("Handler resolution failed: %v", err)
-//	}
 func convertInterface[T any](i any) T {
 	var v T
 	vp := unsafe.Pointer(&v)
