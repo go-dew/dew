@@ -1,4 +1,4 @@
-# Dew: A Lightweight, Pragmatic Command Bus Library for Go
+# Dew: A Lightweight, Pragmatic Command Bus Library with Middleware System for Go
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/go-dew/dew.svg)](https://pkg.go.dev/github.com/go-dew/dew)
 [![Go Report Card](https://goreportcard.com/badge/github.com/go-dew/dew)](https://goreportcard.com/report/github.com/go-dew/dew)
@@ -6,7 +6,9 @@
 
 <img src="assets/dew.png" alt="dew logo" style="width: 200px;" />
 
-Dew is a command bus library for Go, designed to enhance developer experience and productivity. It utilizes the [command-oriented interface](https://martinfowler.com/bliki/CommandOrientedInterface.html) pattern, which allows for separation of concerns, modularization, and better readability of the codebase, eliminating unnecessary cognitive load.
+Dew frees us from the cognitive load for managing different interfaces for each operation handler or domain logic. It provides a lightweight command bus interface + Middleware System for Go.
+
+<img src="assets/overview.webp" alt="dew overview" />
 
 ## Features
 
@@ -83,11 +85,11 @@ Dew uses the following terminology:
 - **Middleware**: Functions that execute logic (e.g., logging, authorization, transaction management) before and after command execution.
 - **Bus**: Manages registration of handlers and routing of actions and queries to their respective handlers.
 
-## What is Command Bus?
+## What is the Command Oriented Interface Pattern?
 
-A command bus is a design pattern that separates the execution of commands from their processing logic. It decouples the sender of a command from the handler, enhancing code modularization and separation of concerns.
+It utilizes the [command-oriented interface](https://martinfowler.com/bliki/CommandOrientedInterface.html) pattern, which allows for separation of concerns, modularization, and better readability of the codebase, eliminating unnecessary cognitive load.
 
-You can find more about the command bus pattern in the following articles:
+You can find more about the pattern in the following articles:
 
 - [Command Oriented Interface by Martin Fowler](https://martinfowler.com/bliki/CommandOrientedInterface.html)
 - [What is a command bus and why should you use it?](https://barryvanveen.nl/articles/49-what-is-a-command-bus-and-why-should-you-use-it)
@@ -96,13 +98,6 @@ You can find more about the command bus pattern in the following articles:
 ## Motivation
 
 I've been working on multiple complex backend applications built in Go over the years, and looking for a way to make the code more readable, maintainable, and more fun to work with. I believe Command Bus architecture could be an answer to this problem. However, I couldn't find a library that fits my needs, so I decided to create Dew.
-
-There are several benefits to using Dew:
-
-- It provides a bus interface that utilizes Go's generics to handle commands and queries, allowing for better performance and ease of use.
-- The middleware system allows for adding features like logging, authorization, and transaction management for groups of handlers with granular control. See [middleware example](#middleware) and [authorization example](examples/authorization/main.go) for more details.
-- The unified bus interface eliminates the need for creating and managing a clutter of mock objects of different interfaces, making the unit tests more readable and fun to work with. See [testing example](#testing-example-mocking-command-handlers) for more details.
-- With its built-in support for asynchronous queries, Dew can handle multiple queries concurrently, reducing the time to retrieve data from multiple sources. See [QueryAsync example](#executing-queries) for more details.
 
 Dew is designed to be lightweight with zero dependencies, making it easy to integrate into any Go project.
 

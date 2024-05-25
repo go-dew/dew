@@ -10,7 +10,11 @@ Welcome to Dew's documentation!
    :alt: Dew logo
    :width: 400px
 
-A Lightweight, Pragmatic Command Bus library for Go.
+A Command Oriented Interface + Middleware System for Go.
+
+.. image:: _static/overview.webp
+   :alt: Dew overview
+   :width: 800px
 
 Features
 --------

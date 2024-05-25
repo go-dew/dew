@@ -6,9 +6,7 @@ Dew
 .. contents::
     :local:
 
-Dew is a lightweight, pragmatic command bus library for Go, designed to enhance developer experience and productivity.
-
-The focus of this project has been to seek a way to simplify backend application development in Go, reducing the complexity of the code and cognitive load due to managing the dependencies, a cluttered interface, and mocking the dependencies for testing.
+Dew is a command oriented interface library + Middleware System for Go. With the unified interface, we can be free from the cognitive load for maintaining different interfaces for each operation handler or domain logic.
 
 .. _minimal-example:
 
