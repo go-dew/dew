@@ -29,7 +29,7 @@ type Actions []CommandHandler[Action]
 type CommandHandler[T Command] interface {
 	Handle(ctx Context) error
 	Command() Command
-	Mux() *Mux
+	Mux() *mux
 }
 
 // NewAction creates an object that can be dispatched.
@@ -56,7 +56,7 @@ func NewQuery[T QueryAction](bus Bus, cmd *T) CommandHandler[T] {
 
 // command carries the necessary information to dispatch a command.
 type command[T Command] struct {
-	mux     *Mux
+	mux     *mux
 	cmd     *T
 	handler HandlerFunc[T]
 }
@@ -69,7 +69,7 @@ func (c command[T]) Command() Command {
 	return c.cmd
 }
 
-func (c command[T]) Mux() *Mux {
+func (c command[T]) Mux() *mux {
 	return c.mux
 }
 
@@ -82,17 +82,17 @@ func convertInterface[T any](i any) T {
 type entry struct {
 	t reflect.Type
 	p unsafe.Pointer
-	m *Mux
+	m *mux
 }
 
 // storeCache stores the handler in the cache.
-func storeCache[T Command](cache *syncMap, t reflect.Type, mx *Mux, handlerFunc HandlerFunc[T]) {
-	cache.Store(t, entry{t: t, m: mx, p: unsafe.Pointer(&handlerFunc)})
+func storeCache[T Command](cache *syncMap, t reflect.Type, mx *mux, handlerFunc HandlerFunc[T]) {
+	cache.store(t, entry{t: t, m: mx, p: unsafe.Pointer(&handlerFunc)})
 }
 
 // loadHandlerCache loads the handler from the cache.
-func loadHandlerCache[T Command](typ reflect.Type, mx *Mux) (HandlerFunc[T], *Mux, bool) {
-	if v, ok := mx.cache.Load(typ); ok {
+func loadHandlerCache[T Command](typ reflect.Type, mx *mux) (HandlerFunc[T], *mux, bool) {
+	if v, ok := mx.cache.load(typ); ok {
 		e := v.(entry)
 		return *(*HandlerFunc[T])(e.p), e.m, true
 	}
@@ -100,9 +100,9 @@ func loadHandlerCache[T Command](typ reflect.Type, mx *Mux) (HandlerFunc[T], *Mu
 }
 
 // resolveHandler returns the handler and mux for the given command.
-func resolveHandler[T Command](bus Bus) (HandlerFunc[T], *Mux) {
+func resolveHandler[T Command](bus Bus) (HandlerFunc[T], *mux) {
 	typ := typeFor[T]()
-	mx := bus.(*Mux)
+	mx := bus.(*mux)
 
 	h, mxx, ok := loadHandlerCache[T](typ, mx)
 	if ok {
@@ -120,9 +120,15 @@ func resolveHandler[T Command](bus Bus) (HandlerFunc[T], *Mux) {
 	panic(fmt.Sprintf("handler not found for %s/%s", typ.PkgPath(), typ.String()))
 }
 
+// typeFor returns the reflect.Type for the given type.
+func typeFor[T any]() reflect.Type {
+	var t T
+	return reflect.TypeOf(t)
+}
+
 type handler struct {
 	// handler is the function to call.
 	handler any
 	// mux is the mux that the handler belongs to.
-	mux *Mux
+	mux *mux
 }

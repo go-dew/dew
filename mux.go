@@ -2,24 +2,17 @@ package dew
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"reflect"
 	"sync"
 )
 
-type middlewareType int
-
-const (
-	mCmd middlewareType = iota
-	mDispatch
-	mQuery
-	mAll
+var (
+	_ Bus = (*mux)(nil)
 )
 
-// Mux is the main struct where all handlers and middlewares are registered.
-type Mux struct {
-	parent      *Mux
+// mux is the main struct where all handlers and middlewares are registered.
+type mux struct {
+	parent      *mux
 	inline      bool
 	lock        sync.RWMutex
 	entries     *sync.Map
@@ -32,39 +25,37 @@ type Mux struct {
 	pool *sync.Pool
 }
 
-// syncMap is a structure that holds a map of handlers.
-type syncMap struct {
-	kv map[reflect.Type]any
-	mu sync.RWMutex
+// New creates an instance of the Command Bus.
+func New() Bus {
+	return newMux()
 }
 
-// Load returns the value stored in the map.
-func (m *syncMap) Load(key reflect.Type) (value any, ok bool) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	value, ok = m.kv[key]
-	return
-}
+// OpType represents the type of operation.
+type OpType uint8
 
-// Store stores the value in the map.
-func (m *syncMap) Store(key reflect.Type, value any) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.kv[key] = value
-}
+const (
+	// ACTION indicates a command that modifies state.
+	ACTION OpType = 1 << iota
+	// QUERY indicates a command that fetches data.
+	QUERY
+)
 
-func (mx *Mux) root() *Mux {
-	if mx.parent == nil {
-		return mx
-	}
-	return mx.parent.root()
-}
+const ALL OpType = ACTION | QUERY
 
 type mHandlerFunc func(ctx Context) error
 
+type middlewareType int
+
+const (
+	mCmd middlewareType = iota
+	mDispatch
+	mQuery
+	mAll
+)
+
 // newMux returns a newly initialized Mux object that implements the dispatcher interface.
-func newMux() *Mux {
-	mux := &Mux{entries: &sync.Map{}, pool: &sync.Pool{}}
+func newMux() *mux {
+	mux := &mux{entries: &sync.Map{}, pool: &sync.Pool{}}
 	mux.pool.New = func() interface{} {
 		return NewContext()
 	}
@@ -72,141 +63,39 @@ func newMux() *Mux {
 	return mux
 }
 
-// FromContext returns the bus from the context.
-func FromContext(ctx context.Context) Bus {
-	return ctx.Value(busCtxKey{}).(Bus)
-}
-
-type busCtxKey struct{}
-
-// Dispatch executes the action.
-// It assumes that all handlers have been registered to the same mux.
-func Dispatch(ctx context.Context, actions ...CommandHandler[Action]) error {
-	if len(actions) == 0 {
-		return nil
+func (mx *mux) root() *mux {
+	if mx.parent == nil {
+		return mx
 	}
-	mux := actions[0].Mux().root()
-
-	rctx := mux.pool.Get().(*BusContext)
-	rctx.Reset()
-	rctx.ctx = context.WithValue(ctx, busCtxKey{}, mux)
-
-	defer mux.pool.Put(rctx)
-
-	return mux.mHandlers[mDispatch](rctx, func(ctx Context) error {
-		for _, action := range actions {
-			if err := action.Command().(Action).Validate(ctx.Context()); err != nil {
-				return fmt.Errorf("%w: %v", ErrValidationFailed, err)
-			}
-			if err := action.Mux().dispatch(ACTION, ctx, action); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
-}
-
-// Query executes the query and returns the result.
-func Query[T QueryAction](ctx context.Context, query CommandHandler[T]) (*T, error) {
-	mux := query.Mux().root()
-
-	rctx := mux.pool.Get().(*BusContext)
-	rctx.Reset()
-	rctx.ctx = context.WithValue(ctx, busCtxKey{}, mux)
-
-	defer mux.pool.Put(rctx)
-
-	if err := mux.mHandlers[mQuery](rctx, func(ctx Context) error {
-		return query.Mux().dispatch(QUERY, ctx, query)
-	}); err != nil {
-		return nil, err
-	}
-
-	return query.Command().(*T), nil
-}
-
-// QueryAsync executes all queries asynchronously and collects errors.
-// It assumes that all handlers have been registered to the same mux.
-func QueryAsync(ctx context.Context, queries ...CommandHandler[Command]) error {
-	if len(queries) == 0 {
-		return nil
-	}
-	mux := queries[0].Mux().root()
-
-	rctx := mux.pool.Get().(*BusContext) // Get a context from the pool.
-	rctx.Reset()
-	rctx.ctx = context.WithValue(ctx, busCtxKey{}, mux)
-
-	defer mux.pool.Put(rctx) // Ensure the context is put back into the pool.
-
-	return mux.mHandlers[mQuery](rctx, func(ctx Context) error {
-		// Create a goroutine for each query and synchronize with WaitGroup.
-		var wg sync.WaitGroup
-		errs := make(chan error, len(queries)) // Buffered channel to collect errors from goroutines.
-
-		for _, query := range queries {
-			query := query
-			wg.Add(1)
-			go func(query CommandHandler[Command]) {
-				defer wg.Done()
-				rctx := mux.pool.Get().(*BusContext) // Get a context from the pool.
-				rctx.Reset()
-				rctx.Copy(ctx.(*BusContext)) // Copy the context to the new context.
-
-				defer mux.pool.Put(rctx) // Ensure the context is put back into the pool.
-
-				if err := mux.mHandlers[mQuery](rctx, func(ctx Context) error {
-					return query.Mux().dispatch(QUERY, ctx, query)
-				}); err != nil {
-					errs <- err // Send errors to the channel.
-				}
-			}(query)
-		}
-
-		wg.Wait()
-		close(errs) // Close the channel after all goroutines are done.
-
-		// Collect errors from the channel.
-		var combinedError error
-		for err := range errs {
-			if combinedError == nil {
-				combinedError = err
-			} else {
-				combinedError = errors.Join(combinedError, err)
-			}
-		}
-
-		return combinedError
-	})
-
+	return mx.parent.root()
 }
 
 // Use appends the middlewares to the mux middleware chain.
 // The middleware chain will be executed in the order they were added.
-func (mx *Mux) Use(op OpType, middlewares ...func(next Middleware) Middleware) {
+func (mx *mux) Use(op OpType, middlewares ...func(next Middleware) Middleware) {
 	for _, mw := range middlewares {
 		mx.middlewares[mCmd] = append(mx.middlewares[mCmd], middleware{op: op, fn: mw})
 	}
 }
 
 // UseDispatch appends the middlewares to the dispatch middleware chain.
-func (mx *Mux) UseDispatch(middlewares ...func(next Middleware) Middleware) {
+func (mx *mux) UseDispatch(middlewares ...func(next Middleware) Middleware) {
 	mx.addMiddleware(mDispatch, middlewares)
 }
 
 // UseQuery appends the middlewares to the query middleware chain.
-func (mx *Mux) UseQuery(middlewares ...func(next Middleware) Middleware) {
+func (mx *mux) UseQuery(middlewares ...func(next Middleware) Middleware) {
 	mx.addMiddleware(mQuery, middlewares)
 }
 
-func (mx *Mux) addMiddleware(m middlewareType, mws []func(next Middleware) Middleware) {
+func (mx *mux) addMiddleware(m middlewareType, mws []func(next Middleware) Middleware) {
 	for _, mw := range mws {
 		mx.middlewares[m] = append(mx.middlewares[m], middleware{fn: mw})
 	}
 }
 
 // Group creates a new mux with a copy of the parent middlewares.
-func (mx *Mux) Group(fn func(mx Bus)) Bus {
+func (mx *mux) Group(fn func(mx Bus)) Bus {
 	child := mx.child()
 	if fn != nil {
 		fn(child)
@@ -215,7 +104,7 @@ func (mx *Mux) Group(fn func(mx Bus)) Bus {
 }
 
 // with creates a new mux with the given middlewares.
-func (mx *Mux) child() Bus {
+func (mx *mux) child() Bus {
 
 	// copy the parent middlewares
 	var mws [mAll][]middleware
@@ -224,7 +113,7 @@ func (mx *Mux) child() Bus {
 		copy(mws[i], mx.middlewares[i])
 	}
 
-	return &Mux{
+	return &mux{
 		parent:      mx,
 		inline:      true,
 		middlewares: mws,
@@ -233,13 +122,8 @@ func (mx *Mux) child() Bus {
 	}
 }
 
-type finalHandler interface {
-	Handle(ctx Context) error
-	Command() Command
-}
-
 // dispatch dispatches the command to the appropriate Executor.
-func (mx *Mux) dispatch(op OpType, ctx Context, h finalHandler) error {
+func (mx *mux) dispatch(op OpType, ctx Context, h internalHandler) error {
 	hh := mx.handlerFor(op)
 	if hh == nil {
 		mx.updateRouteHandler(op)
@@ -249,20 +133,20 @@ func (mx *Mux) dispatch(op OpType, ctx Context, h finalHandler) error {
 	return hh.Handle(ctx)
 }
 
-func (mx *Mux) handlerFor(op OpType) Middleware {
+func (mx *mux) handlerFor(op OpType) Middleware {
 	mx.lock.RLock()
 	defer mx.lock.RUnlock()
 	return mx.handler[op]
 }
 
-func (mx *Mux) newDispatchHandler(m middlewareType, fn func(ctx Context) error) Middleware {
+func (mx *mux) newDispatchHandler(m middlewareType, fn func(ctx Context) error) Middleware {
 	return exec(mx.middlewares[m], MiddlewareFunc(
 		func(ctx Context) error {
 			return fn(ctx)
 		}))
 }
 
-func (mx *Mux) updateRouteHandler(op OpType) {
+func (mx *mux) updateRouteHandler(op OpType) {
 	mx.lock.Lock()
 	defer mx.lock.Unlock()
 	mx.handler[op] = chain(op, mx.middlewares[mCmd], MiddlewareFunc(
@@ -271,7 +155,7 @@ func (mx *Mux) updateRouteHandler(op OpType) {
 		}))
 }
 
-func (mx *Mux) updateHandler(m middlewareType) {
+func (mx *mux) updateHandler(m middlewareType) {
 	mx.lock.Lock()
 	defer mx.lock.Unlock()
 	mx.mHandlers[m] = func(ctx Context, fn mHandlerFunc) error {
@@ -282,7 +166,7 @@ func (mx *Mux) updateHandler(m middlewareType) {
 }
 
 // Register adds the handler to the mux for the given command type.
-func (mx *Mux) Register(handler any) {
+func (mx *mux) Register(handler any) {
 	hdlTyp := reflect.TypeOf(handler)
 	for i := 0; i < hdlTyp.NumMethod(); i++ {
 		mtdTyp := hdlTyp.Method(i)
@@ -298,7 +182,7 @@ func (mx *Mux) Register(handler any) {
 	mx.setupHandler()
 }
 
-func (mx *Mux) setupHandler() {
+func (mx *mux) setupHandler() {
 	if mx.mHandlers[mQuery] == nil {
 		mx.updateHandler(mQuery)
 	}
@@ -310,7 +194,7 @@ func (mx *Mux) setupHandler() {
 	}
 }
 
-func (mx *Mux) addHandler(t reflect.Type, h any) {
+func (mx *mux) addHandler(t reflect.Type, h any) {
 	mx.entries.Store(t, &handler{handler: h, mux: mx})
 }
 
@@ -381,12 +265,6 @@ func filterMiddleware(op OpType, middlewares []middleware) []middleware {
 		}
 	}
 	return mws
-}
-
-// typeFor returns the reflect.Type for the given type.
-func typeFor[T any]() reflect.Type {
-	var t T
-	return reflect.TypeOf(t)
 }
 
 type middleware struct {

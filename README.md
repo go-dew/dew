@@ -12,11 +12,11 @@ Dew frees us from the cognitive load for managing different interfaces for each 
 
 ## Features
 
-- **Lightweight**: Clocks around 450 LOC with minimalistic design.
-- **Pragmatic and Ergonomic**: Focused on developer experience and productivity.
-- **Production Ready**: 100% test coverage.
-- **Zero Dependencies**: No external dependencies.
-- **Fast**: See [benchmarks](#benchmarks).
+-   **Lightweight**: Clocks around 450 LOC with minimalistic design.
+-   **Pragmatic and Ergonomic**: Focused on developer experience and productivity.
+-   **Production Ready**: 100% test coverage.
+-   **Zero Dependencies**: No external dependencies.
+-   **Fast**: See [benchmarks](#benchmarks).
 
 ## Installation
 
@@ -58,7 +58,7 @@ func main() {
 
     // Register the handler for the HelloAction.
     bus.Register(new(HelloHandler))
-    
+
     // Alternatively, you can use the HandlerFunc to register the handler.
     // bus.Register(dew.HandlerFunc[HelloAction](func(ctx context.Context, cmd *HelloAction) error {
     //     println(fmt.Sprintf("Hello, %s!", cmd.Name)) // Output: Hello, Dew!
@@ -80,10 +80,10 @@ func (h *HelloHandler) HandleHelloAction(ctx context.Context, cmd *HelloAction) 
 
 Dew uses the following terminology:
 
-- **Action**: Operations that change the application state. We use the term "Action" to avoid confusion with similar terms in Go. It's equivalent to what is commonly known as a "Command" in [Command Query Separation (CQS)](https://en.wikipedia.org/wiki/Command%E2%80%93query_separation) and [Command Query Responsibility Segregation (CQRS)](https://martinfowler.com/bliki/CQRS.html) patterns.
-- **Query**: Operations that retrieve data.
-- **Middleware**: Functions that execute logic (e.g., logging, authorization, transaction management) before and after command execution.
-- **Bus**: Manages registration of handlers and routing of actions and queries to their respective handlers.
+-   **Action**: Operations that change the application state. We use the term "Action" to avoid confusion with similar terms in Go. It's equivalent to what is commonly known as a "Command" in [Command Query Separation (CQS)](https://en.wikipedia.org/wiki/Command%E2%80%93query_separation) and [Command Query Responsibility Segregation (CQRS)](https://martinfowler.com/bliki/CQRS.html) patterns.
+-   **Query**: Operations that retrieve data.
+-   **Middleware**: Functions that execute logic (e.g., logging, authorization, transaction management) before and after command execution.
+-   **Bus**: Manages registration of handlers and routing of actions and queries to their respective handlers.
 
 ## What is the Command Oriented Interface Pattern?
 
@@ -91,9 +91,9 @@ It utilizes the [command-oriented interface](https://martinfowler.com/bliki/Comm
 
 You can find more about the pattern in the following articles:
 
-- [Command Oriented Interface by Martin Fowler](https://martinfowler.com/bliki/CommandOrientedInterface.html)
-- [What is a command bus and why should you use it?](https://barryvanveen.nl/articles/49-what-is-a-command-bus-and-why-should-you-use-it)
-- [Laravel Command Bus Pattern](https://laravel.com/docs/5.0/bus)
+-   [Command Oriented Interface by Martin Fowler](https://martinfowler.com/bliki/CommandOrientedInterface.html)
+-   [What is a command bus and why should you use it?](https://barryvanveen.nl/articles/49-what-is-a-command-bus-and-why-should-you-use-it)
+-   [Laravel Command Bus Pattern](https://laravel.com/docs/5.0/bus)
 
 ## Motivation
 
@@ -105,12 +105,13 @@ Dew is designed to be lightweight with zero dependencies, making it easy to inte
 
 Dew relies on a convention for `Action` and `Query` interfaces:
 
-- **Action Interface**: Each action in Dew must implement a `Validate` method, as defined by the `Action` interface. This `Validate` method is responsible for checking that the action's data is correct before it is processed.
-- **Query Interface**: Each query in any struct that implements the `Query` interface, which is an empty interface. Queries do not need a `Validate` method because they do not change the state of the application.
+-   **Action Interface**: Each action in Dew must implement a `Validate` method, as defined by the `Action` interface. This `Validate` method is responsible for checking that the action's data is correct before it is processed.
+-   **Query Interface**: Each query in any struct that implements the `Query` interface, which is an empty interface. Queries do not need a `Validate` method because they do not change the state of the application.
 
 Here's a simple example of how both interfaces are defined and used:
 
 ```go
+// MyAction represents an Action
 type MyAction struct {
     Amount int
 }
@@ -123,6 +124,7 @@ func (a *MyAction) Validate(ctx context.Context) error {
     return nil
 }
 
+// MyQuery represents a Query
 type MyQuery struct {
     AccountID string
 }
@@ -147,24 +149,25 @@ import (
     "github.com/go-dew/dew"
 )
 
-func main() {
-    bus := dew.New()
-    
-    // Register handlers
-    bus.Register(new(MyCommandHandler))
+type MyHandler struct {}
+
+type MyAction struct {
+    Message string
 }
 
-type MyCommandHandler struct {}
-
-func (h *MyCommandHandler) HandleMyCommand(ctx context.Context, cmd *MyCommand) error {
+func (h *MyHandler) HandleMyAction(ctx context.Context, a *MyAction) error {
     // handle command
-    fmt.Println("Handling command:", cmd)
+    fmt.Println("Handling action:", a)
     return nil
 }
 
-type MyCommand struct {
-    Message string
+func main() {
+    bus := dew.New()
+
+    // Register handlers
+    bus.Register(new(MyHandler))
 }
+
 ```
 
 ### Dispatching Commands
@@ -175,10 +178,10 @@ Use the `Dispatch` function to send commands:
 func main() {
     ctx := context.Background()
     bus := dew.New()
-    bus.Register(new(MyCommandHandler))
+    bus.Register(new(MyHandler))
 
-    cmd := &MyCommand{Message: "Hello, Dew!"}
-    if err := dew.Dispatch(ctx, dew.NewAction(cmd)); err != nil {
+    a := &MyAction{Message: "Hello, Dew!"}
+    if err := dew.Dispatch(ctx, dew.NewAction(a)); err != nil {
         fmt.Println("Error dispatching command:", err)
     }
 }
@@ -190,14 +193,14 @@ func main() {
 
 ```go
 
+type MyHandler struct {}
+
 type MyQuery struct {
     Question string
     Result string
 }
 
-type MyQueryHandler struct {}
-
-func (h *MyQueryHandler) HandleMyQuery(ctx context.Context, query *MyQuery) error {
+func (h *MyHandler) HandleMyQuery(ctx context.Context, query *MyQuery) error {
     // Return query result
     query.Result = "Dew is a command bus library for Go."
     return nil
@@ -206,7 +209,7 @@ func (h *MyQueryHandler) HandleMyQuery(ctx context.Context, query *MyQuery) erro
 func main() {
     ctx := context.Background()
     bus := dew.New()
-    bus.Register(new(MyQueryHandler))
+    bus.Register(new(MyHandler))
 
     result, err := dew.Query(ctx, dew.NewQuery(&MyQuery{Question: "What is Dew?"}))
     if err != nil {
@@ -232,16 +235,16 @@ type WeatherQuery struct {
     Result string
 }
 
-type AccountQueryHandler struct {}
-type WeatherQueryHandler struct {}
+type AccountHandler struct {}
+type WeatherHandler struct {}
 
-func (h *AccountQueryHandler) HandleAccountQuery(ctx context.Context, query *AccountQuery) error {
+func (h *AccountHandler) HandleQuery(ctx context.Context, query *AccountQuery) error {
     // Logic to retrieve account balance
     query.Result = 10234.56 // Simulated balance
     return nil
 }
 
-func (h *WeatherQueryHandler) HandleWeatherQuery(ctx context.Context, query *WeatherQuery) error {
+func (h *WeatherHandler) HandleQuery(ctx context.Context, query *WeatherQuery) error {
     // Logic to fetch weather forecast
     query.Result = "Sunny with a chance of rain" // Simulated forecast
     return nil
@@ -250,8 +253,8 @@ func (h *WeatherQueryHandler) HandleWeatherQuery(ctx context.Context, query *Wea
 func main() {
     ctx := context.Background()
     bus := dew.New()
-    bus.Register(new(AccountQueryHandler))
-    bus.Register(new(WeatherQueryHandler))
+    bus.Register(new(AccountHandler))
+    bus.Register(new(WeatherHandler))
 
     accountQuery := &AccountQuery{AccountID: "12345"}
     weatherQuery := &WeatherQuery{City: "New York"}
@@ -320,15 +323,15 @@ func main() {
         bus.Use(dew.ALL, middleware.Logger)
         // Register handlers
         bus.Register(new(UserProfileHandler))
-        
+
         // Sub-grouping
         bus.Group(func(g dew.Bus) {
             // Tracing middleware
             bus.Use(dew.ACTION, middleware.Tracing)
             // Register sensitive handlers
-            bus.Register(new(SensitiveCommandHandler))
+            bus.Register(new(SensitiveHandler))
         })
-        
+
         // Register more handlers
     })
 }
@@ -336,9 +339,9 @@ func main() {
 
 ### Notes about Middleware
 
-- Middleware for handlers can be applied per command or query, based on the `dew.ACTION`, `dew.QUERY` and `dew.ALL` constants.
-- Middleware can be applied multiple times because they are executed per command or query. So make sure the middleware is idempotent when necessary.
-- Middleware for `Dispatch` and `Query` functions can be configured using the `UseDispatch()` and `UseQuery()` methods on the bus. This middleware is executed once per `Dispatch` or `Query` call.
+-   Middleware for handlers can be applied per command or query, based on the `dew.ACTION`, `dew.QUERY` and `dew.ALL` constants.
+-   Middleware can be applied multiple times because they are executed per command or query. So make sure the middleware is idempotent when necessary.
+-   Middleware for `Dispatch` and `Query` functions can be configured using the `UseDispatch()` and `UseQuery()` methods on the bus. This middleware is executed once per `Dispatch` or `Query` call.
 
 ## Middleware Examples: Handling Transactions in Dispatch
 
@@ -425,15 +428,15 @@ import (
 func TestExample(t *testing.T) {
     // Create a new bus instance
     mux := dew.New()
-    
+
     // Register your mock handlers
-    mux.Register(dew.HandlerFunc[action.CreateUser](
-        func(ctx context.Context, command *action.CreateUser) error {
+    mux.Register(dew.HandlerFunc[CreateUserAction](
+        func(ctx context.Context, command *CreateUserAction) error {
             // mock logic
             return nil
         },
     ))
-    
+
     // test your code
 }
 ```
@@ -455,7 +458,7 @@ We welcome contributions to Dew! Please see the [contribution guide](CONTRIBUTIN
 
 ## Credits
 
-- The implementation of Trie data structure is inspired by [go-chi/chi](https://github.com/go-chi/chi).
+-   The implementation of Trie data structure is inspired by [go-chi/chi](https://github.com/go-chi/chi).
 
 ## License
 
