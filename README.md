@@ -211,7 +211,7 @@ func main() {
     bus := dew.New()
     bus.Register(new(MyHandler))
 
-    result, err := dew.Query(ctx, dew.NewQuery(&MyQuery{Question: "What is Dew?"}))
+    result, err := dew.Query(ctx, bus, &MyQuery{Question: "What is Dew?"})
     if err != nil {
         fmt.Println("Error executing query:", err)
     } else {

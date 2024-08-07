@@ -46,7 +46,7 @@ func main() {
 
 	// Execute a query to get the organization profile.
 	ctx = ctxWithCurrUser(context.Background(), &CurrentUser{ID: MemberID})
-	orgProfile, err := dew.Query(ctx, dew.NewQuery(bus, &query.GetOrgDetailsQuery{}))
+	orgProfile, err := dew.Query(ctx, bus, &query.GetOrgDetailsQuery{})
 	println(
 		fmt.Sprintf("Organization Profile: %s, Error: %v", orgProfile, err),
 	) // Output: Organization Profile: , Error: <nil>
