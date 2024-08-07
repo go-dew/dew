@@ -40,8 +40,9 @@ func Dispatch(ctx context.Context, actions ...CommandHandler[Action]) error {
 }
 
 // Query executes the query and returns the result.
-func Query[T QueryAction](ctx context.Context, query CommandHandler[T]) (*T, error) {
-	mux := query.Mux().root()
+func Query[T QueryAction](ctx context.Context, bus Bus, query *T) (*T, error) {
+	queryObj := NewQuery(bus, query)
+	mux := queryObj.Mux().root()
 
 	rctx := mux.pool.Get().(*BusContext)
 	rctx.Reset()
@@ -50,12 +51,12 @@ func Query[T QueryAction](ctx context.Context, query CommandHandler[T]) (*T, err
 	defer mux.pool.Put(rctx)
 
 	if err := mux.mHandlers[mQuery](rctx, func(ctx Context) error {
-		return query.Mux().dispatch(QUERY, ctx, query)
+		return queryObj.Mux().dispatch(QUERY, ctx, queryObj)
 	}); err != nil {
 		return nil, err
 	}
 
-	return query.Command().(*T), nil
+	return queryObj.Command().(*T), nil
 }
 
 // QueryAsync executes all queries asynchronously and collects errors.
