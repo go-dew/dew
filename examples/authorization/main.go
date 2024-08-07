@@ -6,6 +6,8 @@ import (
 
 	"github.com/go-dew/dew"
 	"github.com/go-dew/dew/examples/authorization/handler"
+	"github.com/go-dew/dew/examples/authorization/handler/action"
+	"github.com/go-dew/dew/examples/authorization/handler/query"
 )
 
 var (
@@ -34,17 +36,17 @@ func main() {
 
 	// Dispatch an action to update the organization profile. Which should fail because the user is not authorized.
 	ctx := ctxWithCurrUser(context.Background(), &CurrentUser{ID: MemberID})
-	err := dew.Dispatch(ctx, dew.NewAction(bus, &handler.UpdateOrgAction{Name: "Dew"}))
+	err := dew.Dispatch(ctx, dew.NewAction(bus, &action.UpdateOrgAction{Name: "Dew"}))
 	println(fmt.Sprintf("Error: %v", err)) // Output: Error: unauthorized
 
 	// Dispatch an action to update the organization profile. Which should succeed because the user is authorized.
 	ctx = ctxWithCurrUser(context.Background(), &CurrentUser{ID: AdminID})
-	err = dew.Dispatch(ctx, dew.NewAction(bus, &handler.UpdateOrgAction{Name: "Dew"}))
+	err = dew.Dispatch(ctx, dew.NewAction(bus, &action.UpdateOrgAction{Name: "Dew"}))
 	println(fmt.Sprintf("Error: %v", err)) // Output: Error: <nil>
 
 	// Execute a query to get the organization profile.
 	ctx = ctxWithCurrUser(context.Background(), &CurrentUser{ID: MemberID})
-	orgProfile, err := dew.Query(ctx, dew.NewQuery(bus, &handler.GetOrgDetailsQuery{}))
+	orgProfile, err := dew.Query(ctx, dew.NewQuery(bus, &query.GetOrgDetailsQuery{}))
 	println(
 		fmt.Sprintf("Organization Profile: %s, Error: %v", orgProfile, err),
 	) // Output: Organization Profile: , Error: <nil>
