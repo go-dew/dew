@@ -5,9 +5,9 @@ import (
 	"fmt"
 
 	"github.com/go-dew/dew"
-	"github.com/go-dew/dew/examples/authorization/handler"
-	"github.com/go-dew/dew/examples/authorization/handler/action"
-	"github.com/go-dew/dew/examples/authorization/handler/query"
+	"github.com/go-dew/dew/examples/authorization/commands/action"
+	"github.com/go-dew/dew/examples/authorization/commands/query"
+	"github.com/go-dew/dew/examples/authorization/handlers"
 )
 
 var (
@@ -31,7 +31,7 @@ func main() {
 		bus.Use(dew.ALL, LogCommand)
 
 		// Register the organization profile handler.
-		bus.Register(handler.NewOrgHandler())
+		bus.Register(handlers.NewOrgHandler())
 	})
 
 	// Dispatch an action to update the organization profile. Which should fail because the user is not authorized.
