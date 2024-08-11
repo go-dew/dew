@@ -29,6 +29,19 @@ func TestMux_BasicCommand(t *testing.T) {
 	}
 }
 
+func TestMux_ValueTypeHandler(t *testing.T) {
+	var userHandler userHandler
+
+	mux := dew.New()
+	mux.Register(userHandler)
+
+	createUser := &createUser{Name: "john"}
+	testRunDispatch(t, dew.NewAction(mux, createUser))
+	if createUser.Result != "user created" {
+		t.Fatalf("unexpected result: %s", createUser.Result)
+	}
+}
+
 func TestMux_HandlerNotFound(t *testing.T) {
 	defer func() {
 		if r := recover(); r == nil {

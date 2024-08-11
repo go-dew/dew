@@ -167,48 +167,24 @@ func (mx *mux) updateHandler(m middlewareType) {
 }
 
 // Register adds the handler to the mux for the given command type.
-func (mx *mux) Register(handler any) {
-	hdlTyp := reflect.TypeOf(handler)
+func (mx *mux) Register(handler interface{}) {
+	val := reflect.ValueOf(handler)
+	typ := val.Type()
 
-	// if it's not a pointer, convert it to a pointer so we can get
-	// access to all the methods of the struct.
-	if hdlTyp.Kind() != reflect.Ptr {
-		newVal := reflect.New(reflect.PointerTo(hdlTyp))
-		ptrToHandler := reflect.ValueOf(&handler)
-		if ptrToHandler.Elem().Type().AssignableTo(newVal.Elem().Type()) {
-			newVal.Elem().Set(ptrToHandler.Elem())
-		} else {
-			// If direct assignment is not possible, we need to create an intermediate value
-			intermediateVal := reflect.New(hdlTyp)
-			intermediateVal.Elem().Set(reflect.ValueOf(handler))
-			newVal.Elem().Set(intermediateVal)
-		}
-		handler = newVal.Interface()
-		hdlTyp = reflect.TypeOf(handler)
-
-		if hdlTyp.Kind() == reflect.Ptr && hdlTyp.Elem().Kind() == reflect.Ptr {
-			// We have a pointer to a pointer, let's get to the single pointer
-			newVal := reflect.ValueOf(handler).Elem()
-			handler = newVal.Interface()
-			hdlTyp = reflect.TypeOf(handler)
-		}
-
+	// Convert to pointer if not already
+	if typ.Kind() != reflect.Ptr {
+		val = reflect.New(typ)
+		val.Elem().Set(reflect.ValueOf(handler))
+		typ = val.Type()
 	}
 
-	kind := hdlTyp.Kind()
-	println(fmt.Sprintf("Register: %v %s", kind, hdlTyp.String()))
-
-	numMethod := hdlTyp.NumMethod()
-	println(fmt.Sprintf("numMethod: %v", numMethod))
-
-	for i := 0; i < hdlTyp.NumMethod(); i++ {
-		mtdTyp := hdlTyp.Method(i)
-		if isHandlerMethod(mtdTyp) {
-			cmdTyp := mtdTyp.Type.In(2).Elem()
-			if cmdTyp.Implements(reflect.TypeOf((*Action)(nil)).Elem()) {
-				mx.addHandler(cmdTyp, reflect.ValueOf(handler).Method(i).Interface())
-			} else if cmdTyp.Implements(reflect.TypeOf((*QueryAction)(nil)).Elem()) {
-				mx.addHandler(cmdTyp, reflect.ValueOf(handler).Method(i).Interface())
+	for i := 0; i < typ.NumMethod(); i++ {
+		method := typ.Method(i)
+		if isHandlerMethod(method) {
+			cmdType := method.Type.In(2).Elem()
+			if cmdType.Implements(reflect.TypeOf((*Action)(nil)).Elem()) ||
+				cmdType.Implements(reflect.TypeOf((*QueryAction)(nil)).Elem()) {
+				mx.addHandler(cmdType, val.Method(i).Interface())
 			}
 		}
 	}
