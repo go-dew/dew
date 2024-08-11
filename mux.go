@@ -2,6 +2,7 @@ package dew
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"sync"
 )
@@ -168,6 +169,38 @@ func (mx *mux) updateHandler(m middlewareType) {
 // Register adds the handler to the mux for the given command type.
 func (mx *mux) Register(handler any) {
 	hdlTyp := reflect.TypeOf(handler)
+
+	// if it's not a pointer, convert it to a pointer so we can get
+	// access to all the methods of the struct.
+	if hdlTyp.Kind() != reflect.Ptr {
+		newVal := reflect.New(reflect.PointerTo(hdlTyp))
+		ptrToHandler := reflect.ValueOf(&handler)
+		if ptrToHandler.Elem().Type().AssignableTo(newVal.Elem().Type()) {
+			newVal.Elem().Set(ptrToHandler.Elem())
+		} else {
+			// If direct assignment is not possible, we need to create an intermediate value
+			intermediateVal := reflect.New(hdlTyp)
+			intermediateVal.Elem().Set(reflect.ValueOf(handler))
+			newVal.Elem().Set(intermediateVal)
+		}
+		handler = newVal.Interface()
+		hdlTyp = reflect.TypeOf(handler)
+
+		if hdlTyp.Kind() == reflect.Ptr && hdlTyp.Elem().Kind() == reflect.Ptr {
+			// We have a pointer to a pointer, let's get to the single pointer
+			newVal := reflect.ValueOf(handler).Elem()
+			handler = newVal.Interface()
+			hdlTyp = reflect.TypeOf(handler)
+		}
+
+	}
+
+	kind := hdlTyp.Kind()
+	println(fmt.Sprintf("Register: %v %s", kind, hdlTyp.String()))
+
+	numMethod := hdlTyp.NumMethod()
+	println(fmt.Sprintf("numMethod: %v", numMethod))
+
 	for i := 0; i < hdlTyp.NumMethod(); i++ {
 		mtdTyp := hdlTyp.Method(i)
 		if isHandlerMethod(mtdTyp) {
@@ -187,6 +220,7 @@ func (mx *mux) setupHandler() {
 		mx.updateHandler(mQuery)
 	}
 	if mx.mHandlers[mDispatch] == nil {
+		println("setupHandler")
 		mx.updateHandler(mDispatch)
 	}
 	if mx.parent != nil {
@@ -195,6 +229,7 @@ func (mx *mux) setupHandler() {
 }
 
 func (mx *mux) addHandler(t reflect.Type, h any) {
+	println(fmt.Sprintf("addHandler: %v", t))
 	mx.entries.Store(t, &handler{handler: h, mux: mx})
 }
 
