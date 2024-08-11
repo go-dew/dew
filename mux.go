@@ -2,6 +2,7 @@ package dew
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"sync"
 )
@@ -166,16 +167,24 @@ func (mx *mux) updateHandler(m middlewareType) {
 }
 
 // Register adds the handler to the mux for the given command type.
-func (mx *mux) Register(handler any) {
-	hdlTyp := reflect.TypeOf(handler)
-	for i := 0; i < hdlTyp.NumMethod(); i++ {
-		mtdTyp := hdlTyp.Method(i)
-		if isHandlerMethod(mtdTyp) {
-			cmdTyp := mtdTyp.Type.In(2).Elem()
-			if cmdTyp.Implements(reflect.TypeOf((*Action)(nil)).Elem()) {
-				mx.addHandler(cmdTyp, reflect.ValueOf(handler).Method(i).Interface())
-			} else if cmdTyp.Implements(reflect.TypeOf((*QueryAction)(nil)).Elem()) {
-				mx.addHandler(cmdTyp, reflect.ValueOf(handler).Method(i).Interface())
+func (mx *mux) Register(handler interface{}) {
+	val := reflect.ValueOf(handler)
+	typ := val.Type()
+
+	// Convert to pointer if not already
+	if typ.Kind() != reflect.Ptr {
+		val = reflect.New(typ)
+		val.Elem().Set(reflect.ValueOf(handler))
+		typ = val.Type()
+	}
+
+	for i := 0; i < typ.NumMethod(); i++ {
+		method := typ.Method(i)
+		if isHandlerMethod(method) {
+			cmdType := method.Type.In(2).Elem()
+			if cmdType.Implements(reflect.TypeOf((*Action)(nil)).Elem()) ||
+				cmdType.Implements(reflect.TypeOf((*QueryAction)(nil)).Elem()) {
+				mx.addHandler(cmdType, val.Method(i).Interface())
 			}
 		}
 	}
@@ -187,6 +196,7 @@ func (mx *mux) setupHandler() {
 		mx.updateHandler(mQuery)
 	}
 	if mx.mHandlers[mDispatch] == nil {
+		println("setupHandler")
 		mx.updateHandler(mDispatch)
 	}
 	if mx.parent != nil {
@@ -195,6 +205,7 @@ func (mx *mux) setupHandler() {
 }
 
 func (mx *mux) addHandler(t reflect.Type, h any) {
+	println(fmt.Sprintf("addHandler: %v", t))
 	mx.entries.Store(t, &handler{handler: h, mux: mx})
 }
 
