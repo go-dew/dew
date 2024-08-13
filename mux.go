@@ -2,7 +2,6 @@ package dew
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 	"sync"
 )
@@ -196,7 +195,6 @@ func (mx *mux) setupHandler() {
 		mx.updateHandler(mQuery)
 	}
 	if mx.mHandlers[mDispatch] == nil {
-		println("setupHandler")
 		mx.updateHandler(mDispatch)
 	}
 	if mx.parent != nil {
@@ -205,7 +203,6 @@ func (mx *mux) setupHandler() {
 }
 
 func (mx *mux) addHandler(t reflect.Type, h any) {
-	println(fmt.Sprintf("addHandler: %v", t))
 	mx.entries.Store(t, &handler{handler: h, mux: mx})
 }
 
