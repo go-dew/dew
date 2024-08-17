@@ -22,3 +22,21 @@ func TestMustFromContext(t *testing.T) {
 		MustFromContext(ctx)
 	})
 }
+
+func TestNewContext(t *testing.T) {
+	t.Run("Return a new context with the given bus", func(t *testing.T) {
+		bus := New()
+		ctx := NewContext(context.Background(), bus)
+		if ctx == nil {
+			t.Error("expected context, got nil")
+		}
+		// check if the bus is in the context
+		b, ok := FromContext(ctx)
+		if !ok {
+			t.Error("expected bus in context, got none")
+		}
+		if b != bus {
+			t.Errorf("expected bus: %v, got: %v", bus, b)
+		}
+	})
+}

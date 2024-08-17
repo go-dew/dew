@@ -27,6 +27,11 @@ type Bus interface {
 
 type busKey struct{}
 
+// NewContext creates a new context with the given bus.
+func NewContext(ctx context.Context, bus Bus) context.Context {
+	return context.WithValue(ctx, busKey{}, bus)
+}
+
 // FromContext returns the bus from the context.
 func FromContext(ctx context.Context) (Bus, bool) {
 	bus, ok := ctx.Value(busKey{}).(Bus)
