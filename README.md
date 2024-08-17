@@ -8,11 +8,10 @@
 
 Dew streamlines Go application development by providing a unified interface for handling operations and domain logic. It offers a lightweight command bus with an integrated middleware system, simplifying complex workflows and promoting clean, maintainable code architecture.
 
-<img src="assets/overview.webp" alt="dew overview" />
-
 <h2>Table of Contents</h2>
 
 - [Features](#features)
+- [Concept Diagram](#concept-diagram)
 - [Motivation](#motivation)
 - [Terminology](#terminology)
 - [Convention for Actions and Queries](#convention-for-actions-and-queries)
@@ -38,6 +37,41 @@ Dew streamlines Go application development by providing a unified interface for 
 - **Production Ready**: 100% test coverage.
 - **Zero Dependencies**: No external dependencies.
 - **Fast**: See [benchmarks](#benchmarks).
+
+## Concept Diagram
+
+The following diagram illustrates the core concepts and flow of Dew:
+
+```mermaid
+graph LR
+    Client[Client Code]
+    Bus[Dew Bus]
+    Middleware{Middleware}
+    ActionHandler[Action Handler]
+    QueryHandler[Query Handler]
+
+    subgraph Dew["Dew Command Bus"]
+        Bus
+        Middleware
+    end
+
+    Client -->|1. Dispatch Action| Bus
+    Client -->|2. Execute Query| Bus
+    Bus -->|3. Apply| Middleware
+    Middleware -->|4a. Route Action| ActionHandler
+    Middleware -->|4b. Route Query| QueryHandler
+    ActionHandler -->|5a. Handle & Modify State| DB[(Database)]
+    QueryHandler -->|5b. Fetch Data| DB
+    ActionHandler & QueryHandler -->|6. Return Result| Client
+
+    style Dew fill:#e6f3ff,stroke:#333,stroke-width:2px,color:#000
+    style Bus fill:#b3e0ff,stroke:#333,stroke-width:2px,color:#000
+    style Middleware fill:#ffd966,stroke:#333,stroke-width:2px,color:#000
+    style ActionHandler fill:#d5e8d4,stroke:#333,stroke-width:2px,color:#000
+    style QueryHandler fill:#d5e8d4,stroke:#333,stroke-width:2px,color:#000
+    style Client fill:#dae8fc,stroke:#333,stroke-width:2px,color:#000
+    style DB fill:#f8cecc,stroke:#333,stroke-width:2px,color:#000
+```
 
 ## Motivation
 
