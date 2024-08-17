@@ -63,7 +63,7 @@ func runMemberScenario(bus dew.Bus) error {
 	fmt.Printf("Organization Profile: %s\n", orgProfile.Result)
 
 	fmt.Println("\n2. Dispatch an action to update the organization profile (should fail for member).")
-	err = dew.Dispatch(memberContext, dew.NewAction(&action.UpdateOrgAction{Name: "Foo"}))
+	_, err = dew.Dispatch(memberContext, &action.UpdateOrgAction{Name: "Foo"})
 	if err == nil {
 		return fmt.Errorf("expected unauthorized error, got nil")
 	}
@@ -80,7 +80,7 @@ func runAdminScenario(bus dew.Bus) error {
 	adminContext := authContext(busContext, &CurrentUser{ID: adminID})
 
 	fmt.Println("\n3. Dispatch an action to update the organization profile (should succeed for admin).")
-	err := dew.Dispatch(adminContext, dew.NewAction(&action.UpdateOrgAction{Name: "Foo"}))
+	err := dew.DispatchMulti(adminContext, dew.NewAction(&action.UpdateOrgAction{Name: "Foo"}))
 	if err != nil {
 		return fmt.Errorf("unexpected error in UpdateOrgAction: %w", err)
 	}

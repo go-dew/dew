@@ -13,8 +13,13 @@ var (
 )
 
 // Dispatch executes the action.
+func Dispatch[T Action](ctx context.Context, action *T) (*T, error) {
+	return action, DispatchMulti(ctx, NewAction(action))
+}
+
+// DispatchMulti executes all actions synchronously.
 // It assumes that all handlers have been registered to the same mux.
-func Dispatch(ctx context.Context, actions ...CommandHandler[Action]) error {
+func DispatchMulti(ctx context.Context, actions ...CommandHandler[Action]) error {
 	if len(actions) == 0 {
 		return nil
 	}

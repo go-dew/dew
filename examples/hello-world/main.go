@@ -54,8 +54,7 @@ func run() error {
 	}
 
 	// Create and dispatch HelloAction.
-	action := &HelloAction{Name: name}
-	if err := dew.Dispatch(ctx, dew.NewAction(action)); err != nil {
+	if _, err := dew.Dispatch(ctx, &HelloAction{Name: name}); err != nil {
 		return fmt.Errorf("failed to dispatch HelloAction: %w", err)
 	}
 
