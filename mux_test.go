@@ -205,11 +205,11 @@ func TestMux_Reentrant(t *testing.T) {
 
 	mux.Register(dew.HandlerFunc[findUserPost](
 		func(ctx context.Context, query *findUserPost) error {
-			findUserQuery, err := dew.Query(ctx, dew.FromContext(ctx), &findUser{ID: query.ID})
+			findUserQuery, err := dew.Query(ctx, dew.MustFromContext(ctx), &findUser{ID: query.ID})
 			if err != nil {
 				return err
 			}
-			postQuery, err := dew.Query(ctx, dew.FromContext(ctx), &findPost{ID: query.ID})
+			postQuery, err := dew.Query(ctx, dew.MustFromContext(ctx), &findPost{ID: query.ID})
 			if err != nil {
 				return err
 			}
@@ -568,7 +568,7 @@ func TestMux_BusContext(t *testing.T) {
 
 	mux.UseDispatch(func(next dew.Middleware) dew.Middleware {
 		return dew.MiddlewareFunc(func(ctx dew.Context) error {
-			bus := dew.FromContext(ctx.Context())
+			bus := dew.MustFromContext(ctx.Context())
 			if bus != mux {
 				t.Fatal("expected bus not found")
 			}
@@ -594,7 +594,7 @@ func TestMux_BusContext(t *testing.T) {
 			if ctx.Value("key") != "value" {
 				t.Fatal("expected value not found")
 			}
-			bus := dew.FromContext(ctx)
+			bus := dew.MustFromContext(ctx)
 			if bus != mux {
 				t.Fatal("expected bus not found")
 			}
@@ -603,11 +603,6 @@ func TestMux_BusContext(t *testing.T) {
 	))
 
 	testRunDispatch(t, dew.NewAction(mux, &createUser{Name: "john"}))
-
-	ctx := dew.NewContext()
-	if ctx.Context() == nil {
-		t.Fatal("context should not be nil")
-	}
 }
 
 func BenchmarkMux(b *testing.B) {

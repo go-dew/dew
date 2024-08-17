@@ -2,6 +2,9 @@ package dew
 
 import "context"
 
+var _ Context = (*BusContext)(nil)
+
+// BusContext represents the context for a command execution.
 type BusContext struct {
 	ctx context.Context
 
@@ -10,10 +13,6 @@ type BusContext struct {
 
 	// handler is the wrapped handler function.
 	handler internalHandler
-}
-
-func NewContext() *BusContext {
-	return &BusContext{}
 }
 
 type internalHandler interface {
@@ -51,10 +50,7 @@ func (c *BusContext) Reset() {
 // Context returns the underlying context.Context.
 // If no context is set, it returns context.Background().
 func (c *BusContext) Context() context.Context {
-	if c.ctx != nil {
-		return c.ctx
-	}
-	return context.Background()
+	return c.ctx
 }
 
 // WithValue returns a new Context with the given key-value pair added to the context.

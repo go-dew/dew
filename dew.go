@@ -22,7 +22,7 @@ func Dispatch(ctx context.Context, actions ...CommandHandler[Action]) error {
 
 	rctx := mux.pool.Get().(*BusContext)
 	rctx.Reset()
-	rctx.ctx = context.WithValue(ctx, busCtxKey{}, mux)
+	rctx.ctx = context.WithValue(ctx, busKey{}, mux)
 
 	defer mux.pool.Put(rctx)
 
@@ -46,7 +46,7 @@ func Query[T QueryAction](ctx context.Context, bus Bus, query *T) (*T, error) {
 
 	rctx := mux.pool.Get().(*BusContext)
 	rctx.Reset()
-	rctx.ctx = context.WithValue(ctx, busCtxKey{}, mux)
+	rctx.ctx = context.WithValue(ctx, busKey{}, mux)
 
 	defer mux.pool.Put(rctx)
 
@@ -69,7 +69,7 @@ func QueryAsync(ctx context.Context, queries ...CommandHandler[Command]) error {
 
 	rctx := mux.pool.Get().(*BusContext) // Get a context from the pool.
 	rctx.Reset()
-	rctx.ctx = context.WithValue(ctx, busCtxKey{}, mux)
+	rctx.ctx = context.WithValue(ctx, busKey{}, mux)
 
 	defer mux.pool.Put(rctx) // Ensure the context is put back into the pool.
 

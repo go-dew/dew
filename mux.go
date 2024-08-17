@@ -57,7 +57,7 @@ const (
 func newMux() *mux {
 	mux := &mux{entries: &sync.Map{}, pool: &sync.Pool{}}
 	mux.pool.New = func() interface{} {
-		return NewContext()
+		return &BusContext{}
 	}
 	mux.cache = &syncMap{kv: make(map[reflect.Type]any)}
 	return mux
