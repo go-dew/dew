@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -15,18 +16,89 @@ func TestMux_BasicCommand(t *testing.T) {
 	mux := dew.New()
 	mux.Register(new(userHandler))
 	mux.Register(new(postHandler))
+	ctx := dew.NewContext(context.Background(), mux)
 
 	createUser := &createUser{Name: "john"}
-	testRunDispatch(t, dew.NewAction(mux, createUser))
+	testRunDispatch(t, ctx, dew.NewAction(createUser))
 	if createUser.Result != "user created" {
 		t.Fatalf("unexpected result: %s", createUser.Result)
 	}
 
 	createPost := &createPost{Title: "hello"}
-	testRunDispatch(t, dew.NewAction(mux, createPost))
+	testRunDispatch(t, ctx, dew.NewAction(createPost))
 	if createPost.Result != "post created" {
 		t.Fatalf("unexpected result: %s", createPost.Result)
 	}
+}
+
+func TestMux_DispatchError(t *testing.T) {
+	t.Run("BusNotFound", func(t *testing.T) {
+		ctx := context.Background()
+		err := dew.Dispatch(ctx, dew.NewAction(&createUser{Name: "john"}))
+		if err == nil {
+			t.Fatal("expected an error, but got nil")
+		}
+		if !strings.Contains(err.Error(), "bus not found") {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	})
+	t.Run("ResolveError", func(t *testing.T) {
+		mux := dew.New()
+		ctx := dew.NewContext(context.Background(), mux)
+		err := dew.Dispatch(ctx, dew.NewAction(&createUser{Name: "john"}))
+		if err == nil {
+			t.Fatal("expected an error, but got nil")
+		}
+		if !strings.Contains(err.Error(), "handler not found") {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	})
+}
+
+func TestMux_QueryError(t *testing.T) {
+	t.Run("BusNotFound", func(t *testing.T) {
+		_, err := dew.Query(context.Background(), &findUser{ID: 1})
+		if err == nil {
+			t.Fatal("expected an error, but got nil")
+		}
+		if !strings.Contains(err.Error(), "bus not found") {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	})
+	t.Run("ResolveError", func(t *testing.T) {
+		mux := dew.New()
+		ctx := dew.NewContext(context.Background(), mux)
+		_, err := dew.Query(ctx, &findUser{ID: 1})
+		if err == nil {
+			t.Fatal("expected an error, but got nil")
+		}
+		if !strings.Contains(err.Error(), "handler not found") {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	})
+}
+
+func TestMux_QueryAsyncError(t *testing.T) {
+	t.Run("BusNotFound", func(t *testing.T) {
+		err := dew.QueryAsync(context.Background(), dew.NewQuery(&findUser{ID: 1}))
+		if err == nil {
+			t.Fatal("expected an error, but got nil")
+		}
+		if !strings.Contains(err.Error(), "bus not found") {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	})
+	t.Run("ResolveError", func(t *testing.T) {
+		mux := dew.New()
+		ctx := dew.NewContext(context.Background(), mux)
+		err := dew.QueryAsync(ctx, dew.NewQuery(&findUser{ID: 1}))
+		if err == nil {
+			t.Fatal("expected an error, but got nil")
+		}
+		if !strings.Contains(err.Error(), "handler not found") {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	})
 }
 
 func TestMux_ValueTypeHandler(t *testing.T) {
@@ -34,38 +106,39 @@ func TestMux_ValueTypeHandler(t *testing.T) {
 
 	mux := dew.New()
 	mux.Register(userHandler)
+	ctx := dew.NewContext(context.Background(), mux)
 
 	createUser := &createUser{Name: "john"}
-	testRunDispatch(t, dew.NewAction(mux, createUser))
+	testRunDispatch(t, ctx, dew.NewAction(createUser))
 	if createUser.Result != "user created" {
 		t.Fatalf("unexpected result: %s", createUser.Result)
 	}
 }
 
 func TestMux_HandlerNotFound(t *testing.T) {
-	defer func() {
-		if r := recover(); r == nil {
-			t.Fatal("expected a panic")
-		}
-	}()
-
 	mux := dew.New()
+	ctx := dew.NewContext(context.Background(), mux)
 
-	_ = dew.NewAction(mux, &createUser{Name: "john"})
+	action := dew.NewAction(&createUser{Name: "john"})
+	err := dew.Dispatch(ctx, action)
+	if err == nil {
+		t.Fatal("expected an error, but got nil")
+	}
 }
 
 func TestMux_Query(t *testing.T) {
 	mux := dew.New()
 	mux.Register(new(userHandler))
+	ctx := dew.NewContext(context.Background(), mux)
 
 	// Test successful query
-	result := testRunQuery(t, mux, &findUser{ID: 1})
+	result := testRunQuery(t, ctx, &findUser{ID: 1})
 	if result.Result != "john" {
 		t.Fatalf("unexpected result: %s", result.Result)
 	}
 
 	// Test query error
-	_, err := dew.Query(context.Background(), mux, &findUser{ID: 2})
+	_, err := dew.Query(ctx, &findUser{ID: 2})
 	if err == nil {
 		t.Fatal("expected an error, but got nil")
 	}
@@ -104,20 +177,22 @@ func TestMux_QueryAsync(t *testing.T) {
 		},
 	))
 
+	ctx := dew.NewContext(context.Background(), mux)
+
 	commands := dew.Commands{
-		dew.NewQuery(mux, &findUser{ID: 1}),
-		dew.NewQuery(mux, &findUser{ID: 2}),
-		dew.NewQuery(mux, &findUser{ID: 3}),
-		dew.NewQuery(mux, &findPost{ID: 1}),
-		dew.NewQuery(mux, &findPost{ID: 2}),
-		dew.NewQuery(mux, &findPost{ID: 3}),
+		dew.NewQuery(&findUser{ID: 1}),
+		dew.NewQuery(&findUser{ID: 2}),
+		dew.NewQuery(&findUser{ID: 3}),
+		dew.NewQuery(&findPost{ID: 1}),
+		dew.NewQuery(&findPost{ID: 2}),
+		dew.NewQuery(&findPost{ID: 3}),
 	}
 
 	// count time
 	now := time.Now()
 
 	// query
-	err := dew.QueryAsync(context.Background(), commands...)
+	err := dew.QueryAsync(ctx, commands...)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -172,13 +247,16 @@ func TestMux_QueryAsync_Error(t *testing.T) {
 			return errPostNotFound
 		},
 	))
+
+	ctx := dew.NewContext(context.Background(), mux)
+
 	commands := dew.Commands{
-		dew.NewQuery(mux, &findUser{ID: 1}),
-		dew.NewQuery(mux, &findPost{ID: 1}),
+		dew.NewQuery(&findUser{ID: 1}),
+		dew.NewQuery(&findPost{ID: 1}),
 	}
 
 	// query
-	err := dew.QueryAsync(context.Background(), commands...)
+	err := dew.QueryAsync(ctx, commands...)
 	if err == nil {
 		t.Fatal("expected an error, but got nil")
 	}
@@ -205,11 +283,11 @@ func TestMux_Reentrant(t *testing.T) {
 
 	mux.Register(dew.HandlerFunc[findUserPost](
 		func(ctx context.Context, query *findUserPost) error {
-			findUserQuery, err := dew.Query(ctx, dew.MustFromContext(ctx), &findUser{ID: query.ID})
+			findUserQuery, err := dew.Query(ctx, &findUser{ID: query.ID})
 			if err != nil {
 				return err
 			}
-			postQuery, err := dew.Query(ctx, dew.MustFromContext(ctx), &findPost{ID: query.ID})
+			postQuery, err := dew.Query(ctx, &findPost{ID: query.ID})
 			if err != nil {
 				return err
 			}
@@ -219,7 +297,9 @@ func TestMux_Reentrant(t *testing.T) {
 		},
 	))
 
-	query, err := dew.Query(context.Background(), mux, &findUserPost{ID: 1})
+	ctx := dew.NewContext(context.Background(), mux)
+
+	query, err := dew.Query(ctx, &findUserPost{ID: 1})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -265,14 +345,16 @@ func TestMux_Middlewares(t *testing.T) {
 		},
 	))
 
+	ctx := dew.NewContext(context.Background(), mux)
+
 	command := &createUser{Name: "test"}
-	testRunDispatch(t, dew.NewAction(mux, command))
+	testRunDispatch(t, ctx, dew.NewAction(command))
 	if command.Result != "[all][action]" {
 		t.Fatalf("unexpected result: %s", command.Result)
 	}
 
 	query := &findUser{ID: 1}
-	result, err := dew.Query(context.Background(), mux, query)
+	result, err := dew.Query(ctx, query)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -282,7 +364,7 @@ func TestMux_Middlewares(t *testing.T) {
 
 	// dispatch no action
 
-	if err := dew.Dispatch(context.Background()); err != nil {
+	if err := dew.Dispatch(ctx); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
@@ -310,13 +392,15 @@ func TestMux_DispatchMiddlewares(t *testing.T) {
 		},
 	))
 
+	ctx := dew.NewContext(context.Background(), mux)
+
 	createUsers := []*createUser{
 		{Name: "test"},
 		{Name: "john"},
 	}
 
 	// query
-	findUser, err := dew.Query(context.Background(), mux, &findUser{ID: 1})
+	findUser, err := dew.Query(ctx, &findUser{ID: 1})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -330,9 +414,9 @@ func TestMux_DispatchMiddlewares(t *testing.T) {
 	}
 
 	// multiple commands
-	if err := dew.Dispatch(context.Background(),
-		dew.NewAction(mux, createUsers[0]),
-		dew.NewAction(mux, createUsers[1]),
+	if err := dew.Dispatch(ctx,
+		dew.NewAction(createUsers[0]),
+		dew.NewAction(createUsers[1]),
 	); err != nil {
 		t.Fatal(err)
 	}
@@ -371,11 +455,11 @@ func TestMux_QueryMiddlewares(t *testing.T) {
 		},
 	))
 
+	ctx := dew.NewContext(context.Background(), mux)
+
 	// multiple commands
 	createUser := &createUser{Name: "test"}
-	if err := dew.Dispatch(context.Background(),
-		dew.NewAction(mux, createUser),
-	); err != nil {
+	if err := dew.Dispatch(ctx, dew.NewAction(createUser)); err != nil {
 		t.Fatal(err)
 	}
 
@@ -389,7 +473,7 @@ func TestMux_QueryMiddlewares(t *testing.T) {
 	}
 
 	// query
-	findUser, err := dew.Query(context.Background(), mux, &findUser{ID: 1})
+	findUser, err := dew.Query(ctx, &findUser{ID: 1})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -450,20 +534,22 @@ func TestMux_Groups(t *testing.T) {
 		},
 	))
 
+	ctx := dew.NewContext(context.Background(), mux)
+
 	createUser := &createUser{Name: "john"}
-	testRunDispatch(t, dew.NewAction(mux, createUser))
+	testRunDispatch(t, ctx, dew.NewAction(createUser))
 	if createUser.Result != "[global][user-action]john" {
 		t.Fatalf("unexpected result: %s", createUser.Result)
 	}
 
 	createPost := &createPost{Title: "hello"}
-	testRunDispatch(t, dew.NewAction(mux, createPost))
+	testRunDispatch(t, ctx, dew.NewAction(createPost))
 	if createPost.Result != "[global][post-action]hello" {
 		t.Fatalf("unexpected result: %s", createPost.Result)
 	}
 
 	updateUser := &updateUser{}
-	testRunDispatch(t, dew.NewAction(mux, updateUser))
+	testRunDispatch(t, ctx, dew.NewAction(updateUser))
 	if updateUser.Result != "[global]" {
 		t.Fatalf("unexpected result: %s", updateUser.Result)
 	}
@@ -519,17 +605,19 @@ func TestMux_GroupsQuery(t *testing.T) {
 		},
 	))
 
-	findUser := testRunQuery(t, mux, &findUser{ID: 1})
+	ctx := dew.NewContext(context.Background(), mux)
+
+	findUser := testRunQuery(t, ctx, &findUser{ID: 1})
 	if findUser.Result != "[global][local1]john" {
 		t.Fatalf("unexpected result: %s", findUser.Result)
 	}
 
-	findPost := testRunQuery(t, mux, &findPost{ID: 1})
+	findPost := testRunQuery(t, ctx, &findPost{ID: 1})
 	if findPost.Result != "[global][local2]post" {
 		t.Fatalf("unexpected result: %s", findPost.Result)
 	}
 
-	findTag := testRunQuery(t, mux, &findTagQuery{})
+	findTag := testRunQuery(t, ctx, &findTagQuery{})
 	if findTag.Result != "[global]" {
 		t.Fatalf("unexpected result: %s", findTag.Result)
 	}
@@ -540,8 +628,10 @@ func TestMux_ErrorHandling(t *testing.T) {
 	mux := dew.New()
 	mux.Register(new(userHandler))
 
+	ctx := dew.NewContext(context.Background(), mux)
+
 	createUser := &createUser{Name: ""}
-	err := dew.Dispatch(context.Background(), dew.NewAction(mux, createUser))
+	err := dew.Dispatch(ctx, dew.NewAction(createUser))
 	if err == nil {
 		t.Fatal("expected an error, but got nil")
 	}
@@ -554,7 +644,9 @@ func TestMux_Validation(t *testing.T) {
 	mux := dew.New()
 	mux.Register(new(postHandler))
 
-	err := dew.Dispatch(context.Background(), dew.NewAction(mux, &createPost{Title: ""}))
+	ctx := dew.NewContext(context.Background(), mux)
+
+	err := dew.Dispatch(ctx, dew.NewAction(&createPost{Title: ""}))
 	if err == nil {
 		t.Fatal("expected a validation error, but got nil")
 	}
@@ -602,7 +694,9 @@ func TestMux_BusContext(t *testing.T) {
 		},
 	))
 
-	testRunDispatch(t, dew.NewAction(mux, &createUser{Name: "john"}))
+	ctx := dew.NewContext(context.Background(), mux)
+
+	testRunDispatch(t, ctx, dew.NewAction(&createUser{Name: "john"}))
 }
 
 func BenchmarkMux(b *testing.B) {
@@ -610,24 +704,7 @@ func BenchmarkMux(b *testing.B) {
 	mux1 := dew.New()
 	mux1.Register(new(userHandler))
 	mux1.Register(new(postHandler))
-
-	mux2 := dew.New()
-
-	mux2.Use(dew.ALL, func(next dew.Middleware) dew.Middleware {
-		return dew.MiddlewareFunc(func(ctx dew.Context) error {
-			return next.Handle(ctx)
-		})
-	})
-
-	mux2.Group(func(mux dew.Bus) {
-		mux.Use(dew.ALL, func(next dew.Middleware) dew.Middleware {
-			return dew.MiddlewareFunc(func(ctx dew.Context) error {
-				return next.Handle(ctx)
-			})
-		})
-		mux.Register(new(userHandler))
-		mux.Register(new(postHandler))
-	})
+	ctx1 := dew.NewContext(context.Background(), mux1)
 
 	b.Run("query", func(b *testing.B) {
 
@@ -635,7 +712,7 @@ func BenchmarkMux(b *testing.B) {
 		b.ResetTimer()
 
 		for i := 0; i < b.N; i++ {
-			_, _ = dew.Query(context.Background(), mux1, &findUser{ID: 1})
+			_, _ = dew.Query(ctx1, &findUser{ID: 1})
 		}
 	})
 
@@ -645,9 +722,26 @@ func BenchmarkMux(b *testing.B) {
 		b.ResetTimer()
 
 		for i := 0; i < b.N; i++ {
-			_ = dew.Dispatch(context.Background(), dew.NewAction(mux1, &createPost{Title: "john"}))
+			_ = dew.Dispatch(ctx1, dew.NewAction(&createPost{Title: "john"}))
 		}
 	})
+
+	mux2 := dew.New()
+	mux2.Use(dew.ALL, func(next dew.Middleware) dew.Middleware {
+		return dew.MiddlewareFunc(func(ctx dew.Context) error {
+			return next.Handle(ctx)
+		})
+	})
+	mux2.Group(func(mux dew.Bus) {
+		mux.Use(dew.ALL, func(next dew.Middleware) dew.Middleware {
+			return dew.MiddlewareFunc(func(ctx dew.Context) error {
+				return next.Handle(ctx)
+			})
+		})
+		mux.Register(new(userHandler))
+		mux.Register(new(postHandler))
+	})
+	ctx2 := dew.NewContext(context.Background(), mux2)
 
 	b.Run("query-with-middleware", func(b *testing.B) {
 
@@ -655,7 +749,7 @@ func BenchmarkMux(b *testing.B) {
 		b.ResetTimer()
 
 		for i := 0; i < b.N; i++ {
-			_, _ = dew.Query(context.Background(), mux2, &findUser{ID: 1})
+			_, _ = dew.Query(ctx2, &findUser{ID: 1})
 		}
 	})
 
@@ -665,23 +759,23 @@ func BenchmarkMux(b *testing.B) {
 		b.ResetTimer()
 
 		for i := 0; i < b.N; i++ {
-			_ = dew.Dispatch(context.Background(), dew.NewAction(mux2, &createPost{Title: "john"}))
+			_ = dew.Dispatch(ctx2, dew.NewAction(&createPost{Title: "john"}))
 		}
 	})
 }
 
-func testRunQuery[T dew.QueryAction](t *testing.T, mux dew.Bus, query *T) *T {
+func testRunQuery[T dew.QueryAction](t *testing.T, ctx context.Context, query *T) *T {
 	t.Helper()
-	result, err := dew.Query[T](context.Background(), mux, query)
+	result, err := dew.Query[T](ctx, query)
 	if err != nil {
 		t.Fatal(err)
 	}
 	return result
 }
 
-func testRunDispatch(t *testing.T, commands ...dew.CommandHandler[dew.Action]) {
+func testRunDispatch(t *testing.T, ctx context.Context, commands ...dew.CommandHandler[dew.Action]) {
 	t.Helper()
-	err := dew.Dispatch(context.Background(), commands...)
+	err := dew.Dispatch(ctx, commands...)
 	if err != nil {
 		t.Fatal(err)
 	}

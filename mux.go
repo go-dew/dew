@@ -63,13 +63,6 @@ func newMux() *mux {
 	return mux
 }
 
-func (mx *mux) root() *mux {
-	if mx.parent == nil {
-		return mx
-	}
-	return mx.parent.root()
-}
-
 // Use appends the middlewares to the mux middleware chain.
 // The middleware chain will be executed in the order they were added.
 func (mx *mux) Use(op OpType, middlewares ...func(next Middleware) Middleware) {
