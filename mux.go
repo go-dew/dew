@@ -57,17 +57,10 @@ const (
 func newMux() *mux {
 	mux := &mux{entries: &sync.Map{}, pool: &sync.Pool{}}
 	mux.pool.New = func() interface{} {
-		return NewContext()
+		return &BusContext{}
 	}
 	mux.cache = &syncMap{kv: make(map[reflect.Type]any)}
 	return mux
-}
-
-func (mx *mux) root() *mux {
-	if mx.parent == nil {
-		return mx
-	}
-	return mx.parent.root()
 }
 
 // Use appends the middlewares to the mux middleware chain.

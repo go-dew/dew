@@ -1,3 +1,5 @@
-.idea
-build/
+# Mac OS
 .DS_Store
+
+# Coverage files
+coverage.*

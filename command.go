@@ -30,27 +30,26 @@ type CommandHandler[T Command] interface {
 	Handle(ctx Context) error
 	Command() Command
 	Mux() *mux
+	Resolve(bus Bus) error
 }
 
 // NewAction creates an object that can be dispatched.
 // It panics if the handler is not found.
-func NewAction[T Action](bus Bus, cmd *T) CommandHandler[T] {
-	h, mx := resolveHandler[T](bus)
-	return command[T]{
-		mux:     mx,
-		cmd:     cmd,
-		handler: h,
+func NewAction[T Action](cmd *T) CommandHandler[T] {
+	typ := typeFor[T]()
+	return &command[T]{
+		cmd: cmd,
+		typ: typ,
 	}
 }
 
 // NewQuery creates an object that can be dispatched.
 // It panics if the handler is not found.
-func NewQuery[T QueryAction](bus Bus, cmd *T) CommandHandler[T] {
-	h, mx := resolveHandler[T](bus)
-	return command[T]{
-		mux:     mx,
-		cmd:     cmd,
-		handler: h,
+func NewQuery[T QueryAction](cmd *T) CommandHandler[T] {
+	typ := typeFor[T]()
+	return &command[T]{
+		cmd: cmd,
+		typ: typ,
 	}
 }
 
@@ -59,18 +58,42 @@ type command[T Command] struct {
 	mux     *mux
 	cmd     *T
 	handler HandlerFunc[T]
+	typ     reflect.Type
 }
 
-func (c command[T]) Handle(ctx Context) error {
+func (c *command[T]) Handle(ctx Context) error {
 	return c.handler(ctx.Context(), c.cmd)
 }
 
-func (c command[T]) Command() Command {
+func (c *command[T]) Command() Command {
 	return c.cmd
 }
 
-func (c command[T]) Mux() *mux {
+func (c *command[T]) Mux() *mux {
 	return c.mux
+}
+
+func (c *command[T]) Resolve(bus Bus) error {
+	mx := bus.(*mux)
+
+	h, mxx, ok := loadHandlerCache[T](c.typ, mx)
+	if ok {
+		c.handler = h
+		c.mux = mxx
+		return nil
+	}
+
+	entry, ok := mx.entries.Load(c.typ)
+	if ok {
+		hh := entry.(*handler)
+		hhh := convertInterface[HandlerFunc[T]](hh.handler)
+		storeCache[T](mx.cache, c.typ, hh.mux, hhh)
+		c.handler = hhh
+		c.mux = hh.mux
+		return nil
+	}
+
+	return fmt.Errorf("handler not found for %v", c.typ)
 }
 
 func convertInterface[T any](i any) T {
@@ -97,27 +120,6 @@ func loadHandlerCache[T Command](typ reflect.Type, mx *mux) (HandlerFunc[T], *mu
 		return *(*HandlerFunc[T])(e.p), e.m, true
 	}
 	return nil, nil, false
-}
-
-// resolveHandler returns the handler and mux for the given command.
-func resolveHandler[T Command](bus Bus) (HandlerFunc[T], *mux) {
-	typ := typeFor[T]()
-	mx := bus.(*mux)
-
-	h, mxx, ok := loadHandlerCache[T](typ, mx)
-	if ok {
-		return h, mxx
-	}
-
-	entry, ok := mx.entries.Load(typ)
-	if ok {
-		hh := entry.(*handler)
-		hhh := convertInterface[HandlerFunc[T]](hh.handler)
-		storeCache[T](mx.cache, typ, hh.mux, hhh)
-		return hhh, hh.mux
-	}
-
-	panic(fmt.Sprintf("handler not found for %s/%s", typ.PkgPath(), typ.String()))
 }
 
 // typeFor returns the reflect.Type for the given type.

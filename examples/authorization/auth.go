@@ -12,22 +12,22 @@ type CurrentUser struct {
 	ID int
 }
 
-func ctxWithCurrUser(ctx context.Context, u *CurrentUser) context.Context {
+func authContext(ctx context.Context, u *CurrentUser) context.Context {
 	return context.WithValue(ctx, userCtxKey{}, u)
 }
 
-func currUserFromCtx(ctx context.Context) *CurrentUser {
+func getCurrentUser(ctx context.Context) *CurrentUser {
 	return ctx.Value(userCtxKey{}).(*CurrentUser)
 }
 
-// isAuthorized checks if the current user is authorized.
-func isAuthorized(ctx context.Context) bool {
-	return currUserFromCtx(ctx).ID == AdminID
+// isAdmin checks if the current user is authorized.
+func isAdmin(ctx context.Context) bool {
+	return getCurrentUser(ctx).ID == adminID
 }
 
 func AdminOnly(next dew.Middleware) dew.Middleware {
 	return dew.MiddlewareFunc(func(ctx dew.Context) error {
-		if !isAuthorized(ctx.Context()) {
+		if !isAdmin(ctx.Context()) {
 			// Return an unauthorized error.
 			return ErrUnauthorized
 		}

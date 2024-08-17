@@ -16,11 +16,10 @@ func NewOrgHandler() *OrgHandler {
 }
 
 func (h *OrgHandler) UpdateOrg(_ context.Context, command *action.UpdateOrgAction) error {
-	println("Updating organization name:", command.Name)
 	return nil
 }
 
 func (h *OrgHandler) GetOrgDetails(_ context.Context, command *query.GetOrgDetailsQuery) error {
-	command.Result = "Get organization details"
+	command.Result = "Success"
 	return nil
 }

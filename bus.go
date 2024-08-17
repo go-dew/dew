@@ -25,9 +25,26 @@ type Bus interface {
 	UseQuery(middlewares ...func(next Middleware) Middleware)
 }
 
+type busKey struct{}
+
+// NewContext creates a new context with the given bus.
+func NewContext(ctx context.Context, bus Bus) context.Context {
+	return context.WithValue(ctx, busKey{}, bus)
+}
+
 // FromContext returns the bus from the context.
-func FromContext(ctx context.Context) Bus {
-	return ctx.Value(busCtxKey{}).(Bus)
+func FromContext(ctx context.Context) (Bus, bool) {
+	bus, ok := ctx.Value(busKey{}).(Bus)
+	return bus, ok
+}
+
+// MustFromContext returns the bus from the context, panicking if not found.
+func MustFromContext(ctx context.Context) Bus {
+	bus, ok := FromContext(ctx)
+	if !ok {
+		panic("bus not found in context")
+	}
+	return bus
 }
 
 // Context represents the context for a command execution.
@@ -49,5 +66,3 @@ type HandlerFunc[T any] func(ctx context.Context, command *T) error
 func (f HandlerFunc[T]) Handle(ctx context.Context, command *T) error {
 	return f(ctx, command)
 }
-
-type busCtxKey struct{}

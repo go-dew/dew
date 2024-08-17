@@ -13,16 +13,32 @@ var (
 )
 
 // Dispatch executes the action.
+func Dispatch[T Action](ctx context.Context, action *T) (*T, error) {
+	return action, DispatchMulti(ctx, NewAction(action))
+}
+
+// DispatchMulti executes all actions synchronously.
 // It assumes that all handlers have been registered to the same mux.
-func Dispatch(ctx context.Context, actions ...CommandHandler[Action]) error {
+func DispatchMulti(ctx context.Context, actions ...CommandHandler[Action]) error {
 	if len(actions) == 0 {
 		return nil
 	}
-	mux := actions[0].Mux().root()
 
+	bus, ok := FromContext(ctx)
+	if !ok {
+		return errors.New("bus not found in context")
+	}
+
+	for _, action := range actions {
+		if err := action.Resolve(bus); err != nil {
+			return err
+		}
+	}
+
+	mux := bus.(*mux)
 	rctx := mux.pool.Get().(*BusContext)
 	rctx.Reset()
-	rctx.ctx = context.WithValue(ctx, busCtxKey{}, mux)
+	rctx.ctx = context.WithValue(ctx, busKey{}, mux)
 
 	defer mux.pool.Put(rctx)
 
@@ -40,13 +56,22 @@ func Dispatch(ctx context.Context, actions ...CommandHandler[Action]) error {
 }
 
 // Query executes the query and returns the result.
-func Query[T QueryAction](ctx context.Context, bus Bus, query *T) (*T, error) {
-	queryObj := NewQuery(bus, query)
-	mux := queryObj.Mux().root()
+func Query[T QueryAction](ctx context.Context, query *T) (*T, error) {
+	bus, ok := FromContext(ctx)
+	if !ok {
+		return nil, errors.New("bus not found in context")
+	}
+
+	queryObj := NewQuery(query)
+	if err := queryObj.Resolve(bus); err != nil {
+		return nil, err
+	}
+
+	mux := bus.(*mux)
 
 	rctx := mux.pool.Get().(*BusContext)
 	rctx.Reset()
-	rctx.ctx = context.WithValue(ctx, busCtxKey{}, mux)
+	rctx.ctx = context.WithValue(ctx, busKey{}, mux)
 
 	defer mux.pool.Put(rctx)
 
@@ -65,11 +90,22 @@ func QueryAsync(ctx context.Context, queries ...CommandHandler[Command]) error {
 	if len(queries) == 0 {
 		return nil
 	}
-	mux := queries[0].Mux().root()
+	bus, ok := FromContext(ctx)
+	if !ok {
+		return errors.New("bus not found in context")
+	}
+
+	for _, query := range queries {
+		if err := query.Resolve(bus); err != nil {
+			return err
+		}
+	}
+
+	mux := bus.(*mux)
 
 	rctx := mux.pool.Get().(*BusContext) // Get a context from the pool.
 	rctx.Reset()
-	rctx.ctx = context.WithValue(ctx, busCtxKey{}, mux)
+	rctx.ctx = context.WithValue(ctx, busKey{}, mux)
 
 	defer mux.pool.Put(rctx) // Ensure the context is put back into the pool.
 
