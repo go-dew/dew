@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"github.com/go-dew/dew"
 	"github.com/go-dew/dew/examples/authorization/commands/action"
@@ -10,44 +11,80 @@ import (
 	"github.com/go-dew/dew/examples/authorization/handlers"
 )
 
-var (
-	// User IDs for the example.
-	AdminID  = 1
-	MemberID = 2
-)
-
 var ErrUnauthorized = fmt.Errorf("unauthorized")
 
+var (
+	adminID  = 1
+	memberID = 2
+)
+
 func main() {
-	// Initialize the Command Bus.
+	if err := run(); err != nil {
+		log.Fatalf("Error: %v", err)
+	}
+}
+
+func run() error {
+	bus := initializeBus()
+
+	fmt.Println("--- Authorization Example ---")
+
+	if err := runMemberScenario(bus); err != nil {
+		return fmt.Errorf("member scenario failed: %w", err)
+	}
+
+	if err := runAdminScenario(bus); err != nil {
+		return fmt.Errorf("admin scenario failed: %w", err)
+	}
+
+	fmt.Println("\n--- Authorization Example finished ---")
+	return nil
+}
+
+func initializeBus() dew.Bus {
 	bus := dew.New()
-
-	// Group the handlers and middleware for organization profile authorization.
 	bus.Group(func(bus dew.Bus) {
-		// Set the authorization middleware
 		bus.Use(dew.ACTION, AdminOnly)
-
-		// Register logging middleware.
 		bus.Use(dew.ALL, LogCommand)
-
-		// Register the organization profile handler.
 		bus.Register(handlers.NewOrgHandler())
 	})
+	return bus
+}
 
-	// Dispatch an action to update the organization profile. Which should fail because the user is not authorized.
-	ctx := ctxWithCurrUser(context.Background(), &CurrentUser{ID: MemberID})
-	err := dew.Dispatch(ctx, dew.NewAction(bus, &action.UpdateOrgAction{Name: "Dew"}))
-	println(fmt.Sprintf("Error: %v", err)) // Output: Error: unauthorized
+func runMemberScenario(bus dew.Bus) error {
+	busContext := dew.NewContext(context.Background(), bus)
+	memberContext := authContext(busContext, &CurrentUser{ID: memberID})
 
-	// Dispatch an action to update the organization profile. Which should succeed because the user is authorized.
-	ctx = ctxWithCurrUser(context.Background(), &CurrentUser{ID: AdminID})
-	err = dew.Dispatch(ctx, dew.NewAction(bus, &action.UpdateOrgAction{Name: "Dew"}))
-	println(fmt.Sprintf("Error: %v", err)) // Output: Error: <nil>
+	fmt.Println("\n1. Execute a query to get the organization profile (should succeed for member).")
+	orgProfile, err := dew.Query(memberContext, &query.GetOrgDetailsQuery{})
+	if err != nil {
+		return fmt.Errorf("unexpected error in GetOrgDetailsQuery: %w", err)
+	}
+	fmt.Printf("Organization Profile: %s\n", orgProfile.Result)
 
-	// Execute a query to get the organization profile.
-	ctx = ctxWithCurrUser(context.Background(), &CurrentUser{ID: MemberID})
-	orgProfile, err := dew.Query(ctx, bus, &query.GetOrgDetailsQuery{})
-	println(
-		fmt.Sprintf("Organization Profile: %s, Error: %v", orgProfile, err),
-	) // Output: Organization Profile: , Error: <nil>
+	fmt.Println("\n2. Dispatch an action to update the organization profile (should fail for member).")
+	err = dew.Dispatch(memberContext, dew.NewAction(&action.UpdateOrgAction{Name: "Foo"}))
+	if err == nil {
+		return fmt.Errorf("expected unauthorized error, got nil")
+	}
+	if err != ErrUnauthorized {
+		return fmt.Errorf("expected unauthorized error, got: %w", err)
+	}
+	fmt.Printf("Expected unauthorized error: %v\n", err)
+
+	return nil
+}
+
+func runAdminScenario(bus dew.Bus) error {
+	busContext := dew.NewContext(context.Background(), bus)
+	adminContext := authContext(busContext, &CurrentUser{ID: adminID})
+
+	fmt.Println("\n3. Dispatch an action to update the organization profile (should succeed for admin).")
+	err := dew.Dispatch(adminContext, dew.NewAction(&action.UpdateOrgAction{Name: "Foo"}))
+	if err != nil {
+		return fmt.Errorf("unexpected error in UpdateOrgAction: %w", err)
+	}
+	fmt.Println("\nOrganization profile updated successfully.")
+
+	return nil
 }

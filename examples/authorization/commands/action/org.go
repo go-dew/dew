@@ -20,5 +20,5 @@ func (c UpdateOrgAction) Validate(_ context.Context) error {
 }
 
 func (c UpdateOrgAction) Log() string {
-	return fmt.Sprintf("Updating organization with name: %s", c.Name)
+	return fmt.Sprintf("logging: %s", c.Name)
 }
