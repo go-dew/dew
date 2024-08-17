@@ -18,14 +18,18 @@ func TestMux_BasicCommand(t *testing.T) {
 	mux.Register(new(postHandler))
 	ctx := dew.NewContext(context.Background(), mux)
 
-	createUser := &createUser{Name: "john"}
-	testRunDispatch(t, ctx, dew.NewAction(createUser))
+	createUser, err := dew.Dispatch(ctx, &createUser{Name: "john"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if createUser.Result != "user created" {
 		t.Fatalf("unexpected result: %s", createUser.Result)
 	}
 
-	createPost := &createPost{Title: "hello"}
-	testRunDispatch(t, ctx, dew.NewAction(createPost))
+	createPost, err := dew.Dispatch(ctx, &createPost{Title: "hello"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if createPost.Result != "post created" {
 		t.Fatalf("unexpected result: %s", createPost.Result)
 	}
