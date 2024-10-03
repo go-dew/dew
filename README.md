@@ -221,11 +221,11 @@ func main() {
     ctx := dew.NewContext(context.Background(), bus)
 
     // Execute the query.
-    result, err := dew.Query(ctx, &HelloQuery{Name: "Dew"})
+    query, err := dew.Query(ctx, &HelloQuery{Name: "Dew"})
     if err != nil {
         fmt.Println("Error:", err)
     } else {
-        fmt.Printf("Result: %+v\n", result)
+        fmt.Printf("Result: %+v\n", query.Result)
     }
 }
 
