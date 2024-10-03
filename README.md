@@ -15,8 +15,12 @@ Dew streamlines Go application development by providing a unified interface for 
 - [Motivation](#motivation)
 - [Terminology](#terminology)
 - [Convention for Actions and Queries](#convention-for-actions-and-queries)
+  - [Example for `Action`:](#example-for-action)
+  - [Example for `Query`:](#example-for-query)
 - [Installation](#installation)
 - [Example](#example)
+  - [Hello Action Example](#hello-action-example)
+  - [Hello Query Example](#hello-query-example)
 - [Usage](#usage)
   - [Setting Up the Bus](#setting-up-the-bus)
   - [Dispatching Actions](#dispatching-actions)
@@ -95,7 +99,7 @@ Dew follows these conventions for `Action` and `Query` interfaces:
 - **Action Interface**: Each action must implement a `Validate` method to ensure the action's data is valid before processing.
 - **Query Interface**: Each query implements the `Query` interface, which is an empty interface. Queries don't require a `Validate` method as they don't modify application state.
 
-Example:
+### Example for `Action`:
 
 ```go
 // MyAction represents an Action
@@ -110,6 +114,12 @@ func (a *MyAction) Validate(ctx context.Context) error {
     }
     return nil
 }
+
+```
+
+### Example for `Query`:
+
+```go
 
 // MyQuery represents a Query
 type MyQuery struct {
@@ -129,7 +139,7 @@ go get github.com/go-dew/dew
 
 See [examples](examples) for more detailed examples.
 
-Basic usage:
+### Hello Action Example
 
 ```go
 package main
@@ -175,6 +185,53 @@ func main() {
 type HelloHandler struct {}
 func (h *HelloHandler) HandleHelloAction(ctx context.Context, cmd *HelloAction) error {
     fmt.Printf("Hello, %s!\n", cmd.Name) // Output: Hello, Dew!
+    return nil
+}
+```
+
+### Hello Query Example
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "github.com/go-dew/dew"
+)
+
+// HelloQuery is a simple query that returns a greeting message.
+type HelloQuery struct {
+    // Name is the name of the user.
+    Name string
+
+    // Result is the output of the query.
+    // You can define any struct as the result.
+    Result string
+}
+
+func main() {
+    // Initialize the Command Bus.
+    bus := dew.New()
+
+    // Register the handler for the HelloAction.
+    bus.Register(new(HelloHandler))
+
+    // Create a context with the bus.
+    ctx := dew.NewContext(context.Background(), bus)
+
+    // Execute the query.
+    result, err := dew.Query(ctx, &HelloQuery{Name: "Dew"})
+    if err != nil {
+        fmt.Println("Error:", err)
+    } else {
+        fmt.Printf("Result: %+v\n", result)
+    }
+}
+
+type HelloHandler struct {}
+func (h *HelloHandler) HandleHelloQuery(ctx context.Context, cmd *HelloQuery) error {
+    cmd.Result = fmt.Sprintf("Hello, %s!", cmd.Name)
     return nil
 }
 ```
