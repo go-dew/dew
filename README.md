@@ -59,14 +59,14 @@ graph LR
         Middleware
     end
 
-    Client -->|1. Dispatch Action| Bus
-    Client -->|2. Execute Query| Bus
-    Bus -->|3. Apply| Middleware
-    Middleware -->|4a. Route Action| ActionHandler
-    Middleware -->|4b. Route Query| QueryHandler
-    ActionHandler -->|5a. Handle & Modify State| DB[(Database)]
-    QueryHandler -->|5b. Fetch Data| DB
-    ActionHandler & QueryHandler -->|6. Return Result| Client
+    Client -->|1. Dispatch Action| Bus
+    Client -->|2. Execute Query| Bus
+    Bus -->|3. Apply| Middleware
+    Middleware -->|4a. Route Action| ActionHandler
+    Middleware -->|4b. Route Query| QueryHandler
+    ActionHandler -->|5a. Handle & Modify State| DB[(Database)]
+    QueryHandler -->|5b. Fetch Data| DB
+    ActionHandler & QueryHandler -->|6. Return Result| Client
 
     style Dew fill:#e6f3ff,stroke:#333,stroke-width:2px,color:#000
     style Bus fill:#b3e0ff,stroke:#333,stroke-width:2px,color:#000
