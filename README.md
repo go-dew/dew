@@ -3,6 +3,7 @@
 [![Go Reference](https://pkg.go.dev/badge/github.com/go-dew/dew.svg)](https://pkg.go.dev/github.com/go-dew/dew)
 [![Go Report Card](https://goreportcard.com/badge/github.com/go-dew/dew)](https://goreportcard.com/report/github.com/go-dew/dew)
 [![codecov](https://codecov.io/gh/go-dew/dew/branch/main/graph/badge.svg?token=3ZQZQZQZQZ)](https://codecov.io/gh/go-dew/dew)
+[![libs.tech recommends](https://libs.tech/project/802005966/badge.svg)](https://libs.tech/project/802005966/dew)
 
 <img src="assets/dew.png" alt="dew logo" style="width: 200px;" />
 
