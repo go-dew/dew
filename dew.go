@@ -45,7 +45,7 @@ func DispatchMulti(ctx context.Context, actions ...CommandHandler[Action]) error
 	return mux.mHandlers[mDispatch](rctx, func(ctx Context) error {
 		for _, action := range actions {
 			if err := action.Command().(Action).Validate(ctx.Context()); err != nil {
-				return fmt.Errorf("%w: %v", ErrValidationFailed, err)
+				return fmt.Errorf("%w: %w", ErrValidationFailed, err)
 			}
 			if err := action.Mux().dispatch(ACTION, ctx, action); err != nil {
 				return err
